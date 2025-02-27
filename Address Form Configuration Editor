@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         Address Form Configuration Editor Enhanced
+// @name         Address Form Configuration Editor
 // @namespace    http://tampermonkey.net/
 // @version      4.2
-// @description  Enhanced user-friendly frontend to configure address_form_configuration.json with dynamic sort order and drag-and-drop functionality. (Now with non-moveable layout fields and a massive JSON viewer with search!) Fucking brilliant.
+// @description  Frontend to configure address_form_configuration.json.
 // @author       julpif
 // @match        https://mad.ingrid.com/*
 // @match        https://mad-stage.ingrid.com/*
