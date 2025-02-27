@@ -9,6 +9,8 @@
 // @grant        GM_addStyle
 // @grant        GM_xmlhttpRequest
 // @run-at       document-idle
+// @updateURL    https://raw.githubusercontent.com/julpiff/tampermonkey-scripts/refs/heads/main/Number%20Series%20Manager
+// @downloadURL  https://raw.githubusercontent.com/julpiff/tampermonkey-scripts/refs/heads/main/Number%20Series%20Manager
 // ==/UserScript==
 
 (function() {
