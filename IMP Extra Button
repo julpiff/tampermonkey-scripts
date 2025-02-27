@@ -7,6 +7,8 @@
 // @match        https://mad-stage.ingrid.com/*
 // @match        https://mad.ingrid.com/*
 // @grant        none
+// @updateURL    https://raw.githubusercontent.com/julpiff/tampermonkey-scripts/refs/heads/main/IMP%20Extra%20Button
+// @downloadURL  https://raw.githubusercontent.com/julpiff/tampermonkey-scripts/refs/heads/main/IMP%20Extra%20Button
 // ==/UserScript==
 
 (function() {
