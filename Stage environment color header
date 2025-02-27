@@ -6,6 +6,8 @@
 // @author       julpif
 // @match        https://mad.ingrid.com/*
 // @match        https://mad-stage.ingrid.com/*
+// @updateURL    https://raw.githubusercontent.com/julpiff/tampermonkey-scripts/refs/heads/main/Own%20API%20Token%2C%20Site%20ID%20and%20Private%20Key%20Extractor
+// @downloadURL
 // @grant        none
 // ==/UserScript==
 
