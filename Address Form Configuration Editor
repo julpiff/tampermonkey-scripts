@@ -8,6 +8,8 @@
 // @match        https://mad-stage.ingrid.com/*
 // @grant        GM_addStyle
 // @run-at       document-idle
+// @updateURL    https://raw.githubusercontent.com/julpiff/tampermonkey-scripts/refs/heads/main/Address%20Form%20Configuration%20Editor
+// @downloadURL  https://raw.githubusercontent.com/julpiff/tampermonkey-scripts/refs/heads/main/Address%20Form%20Configuration%20Editor
 // ==/UserScript==
 
 (function() {
