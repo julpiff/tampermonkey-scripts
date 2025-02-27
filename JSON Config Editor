@@ -32,6 +32,8 @@
 // @resource     LintCSS https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/lint/lint.min.css
 // @resource     SearchDialogCSS https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/dialog/dialog.min.css
 // @run-at       document-end
+// @updateURL    https://raw.githubusercontent.com/julpiff/tampermonkey-scripts/refs/heads/main/JSON%20Config%20Editor
+// @downloadURL  https://raw.githubusercontent.com/julpiff/tampermonkey-scripts/refs/heads/main/JSON%20Config%20Editor
 // ==/UserScript==
 
 (function() {
