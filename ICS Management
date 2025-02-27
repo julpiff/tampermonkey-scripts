@@ -7,6 +7,8 @@
 // @match        https://mad.ingrid.com/*
 // @match        https://mad-stage.ingrid.com/*
 // @grant        none
+// @updateURL    https://raw.githubusercontent.com/julpiff/tampermonkey-scripts/refs/heads/main/ICS%20Management
+// @downloadURL  https://raw.githubusercontent.com/julpiff/tampermonkey-scripts/refs/heads/main/ICS%20Management
 // ==/UserScript==
 
 (function() {
