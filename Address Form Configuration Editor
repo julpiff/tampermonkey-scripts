@@ -1296,7 +1296,7 @@ function renderPreview() {
                         Optional Street
                     </label>
                 </div>
-                <span style="font-size: 10px; white-space: nowrap;">12 (fixed)</span>
+                <span style="font-size: 10px; white-space: nowrap;">(fixed)</span>
             </div>`;
         } else {
             if (['REGION'].includes(field.name)) {
