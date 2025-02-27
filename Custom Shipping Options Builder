@@ -8,6 +8,8 @@
 // @match        https://mad-stage.ingrid.com/*
 // @grant        unsafeWindow
 // @run-at       document-idle
+// @updateURL    https://raw.githubusercontent.com/julpiff/tampermonkey-scripts/refs/heads/main/Custom%20Shipping%20Options%20Builder
+// @downloadURL  https://raw.githubusercontent.com/julpiff/tampermonkey-scripts/refs/heads/main/Custom%20Shipping%20Options%20Builder
 // ==/UserScript==
 
 (function() {
