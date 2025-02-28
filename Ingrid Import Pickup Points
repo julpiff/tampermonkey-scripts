@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Ingrid Import Pickup Points
 // @namespace    http://tampermonkey.net/
-// @version      2.4.4
+// @version      2.5
 // @description  Import pickup points from XLSX with an enhanced and user-friendly frontend, triggered via a bookmarklet
 // @author       julpif
 // @match        *://mad-stage.ingrid.com/*
@@ -295,6 +295,17 @@
         // Import form
         const form = document.createElement('form');
         form.id = `${PREFIX}import-form`;
+
+        // Insert an explanatory paragraph
+const infoParagraph = document.createElement('p');
+infoParagraph.style.margin = '10px 0';
+infoParagraph.innerHTML = `
+  For a step by step guide, follow
+  <a href="https://ingrid.slite.com/app/docs/Q93DcpArU-dUwb" target="_blank" style="color: blue; text-decoration: underline;">
+    this article
+  </a>.
+`;
+form.appendChild(infoParagraph);
 
         // Download Template Button
         const downloadTemplateButton = document.createElement('button');
