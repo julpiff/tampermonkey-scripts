@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Address Form Configuration Editor
 // @namespace    http://tampermonkey.net/
-// @version      4.6
+// @version      4.7
 // @description  Frontend to configure address_form_configuration.json.
 // @author       julpif
 // @match        https://mad.ingrid.com/*
@@ -1556,7 +1556,7 @@ function renderPreview() {
                         Optional Street
                     </label>
                 </div>
-                <span style="font-size: 10px; white-space: nowrap;">12 (fixed)</span>
+                <span style="font-size: 10px; white-space: nowrap;">(fixed)</span>
             </div>`;
         } else {
             if (['REGION'].includes(field.name)) {
