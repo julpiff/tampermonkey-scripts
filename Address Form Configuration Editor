@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Address Form Configuration Editor
 // @namespace    http://tampermonkey.net/
-// @version      4.8
+// @version      4.9
 // @description  Frontend to configure address_form_configuration.json.
 // @author       julpif
 // @match        https://mad.ingrid.com/*
@@ -238,7 +238,7 @@
     #afce-publish-button {
         margin-left: auto;
         padding: 8px 16px;
-        background: #007BFF;
+        background: #000000;
         color: #ffffff;
         border: none;
         cursor: pointer;
@@ -251,11 +251,11 @@
     }
 
     #afce-publish-button:hover {
-        background: #0056b3;
+        background: #333333;
     }
 
     #afce-publish-button:active {
-        background: #004085;
+        background: #555555;
         transform: scale(0.98);
     }
 
@@ -945,7 +945,7 @@ new Sortable(preview, {
                     <div class="afce-tab">Features</div>
                     <div class="afce-tab">By Country</div>
                     <div class="afce-tab">JSON</div>
-                    <button id="afce-publish-button"><i class="fas fa-upload"></i> Publish</button>
+                    <button id="afce-publish-button"><i class="fas fa-upload"></i> Publish Configuration</button>
                 </div>
                 <div id="afce-content">
                 </div>
@@ -1027,11 +1027,9 @@ new Sortable(preview, {
         }
 
         const publishButton = modalOverlay.querySelector('#afce-publish-button');
-        publishButton.addEventListener('click', () => {
-            showConfirmModal('Are you sure you want to publish the changes?', () => {
-                publishConfig(fullData);
-            });
-        });
+publishButton.addEventListener('click', () => {
+    publishConfig(fullData);
+});
 
         function showInputModal(title, contentHTML, onSubmit) {
             const inputHeader = inputModalOverlay.querySelector('#afce-input-header h3');
