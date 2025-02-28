@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Custom Shipping Options Builder
 // @namespace    http://tampermonkey.net/
-// @version      5.2
+// @version      5.3
 // @description  Build and manage custom_shipping_methods via a user-friendly interface with API integration
 // @author       julpif
 // @match        https://mad.ingrid.com/*
@@ -1107,7 +1107,7 @@ const operationLabels = {
                                 createElement('th', {}, 'Shipping Method'),
                                 createElement('th', {}, 'Carrier Name'),
                                 createElement('th', {}, 'Delivery Type'),
-                                createElement('th', {}, 'Product'),
+                                createElement('th', {}, 'Display Name'),
                                 createElement('th', {}, 'Fetch Configurations'),
                                 createElement('th', {}, 'Meta Informations'),
                                 createElement('th', {}, 'Time Slots'),
@@ -1351,8 +1351,8 @@ const openAddMethodModal = (parentOverlay, methodData = null) => {
             )
         ),
         createElement('div', { className: 'cso-form-group' },
-            createElement('label', { for: 'cso-product-name' }, 'Product'),
-            createElement('input', { type: 'text', id: 'cso-product-name', placeholder: 'Enter product' })
+            createElement('label', { for: 'cso-product-name' }, 'Display Name'),
+            createElement('input', { type: 'text', id: 'cso-product-name', placeholder: 'Enter the name to be displayed in IMP' })
         ),
         // Fetch Configuration Toggle
         createElement('div', { className: 'cso-form-group cso-fetch-toggle' },
@@ -1385,6 +1385,7 @@ createElement('div', { className: 'cso-form-group' },
         createElement('option', { value: 'MANNED' }, 'MANNED')
     )
 )
+
         ),
         // Meta Fields Toggle
         createElement('div', { className: 'cso-form-group cso-toggle-switch' },
@@ -1430,6 +1431,34 @@ createElement('div', { className: 'cso-form-group' },
 
     // Add "X" close button to the Add Method modal
     addCloseButton(addModal, 'cso-add-method-modal-overlay');
+
+    // Grab the fetch Delivery type select and the pickup location group
+const fetchDeliveryTypeSelect = addModal.querySelector('#cso-fetch-delivery-type');
+const pickupLocationGroup = addModal.querySelector('label[for="cso-fetch-pickup-location-types"]').parentElement;
+
+// Add a help text to the pickup location label
+const pickupLocationLabel = addModal.querySelector('label[for="cso-fetch-pickup-location-types"]');
+if (pickupLocationLabel) {
+    const helpText = document.createElement('small');
+    helpText.style.display = 'block';
+    helpText.style.fontSize = '11px';
+    helpText.style.color = '#6c757d';
+    helpText.textContent = 'Hold "cmd" to select several options';
+    pickupLocationLabel.appendChild(helpText);
+}
+
+// Function to toggle the pickup location types field
+function togglePickupLocationTypes() {
+    if (fetchDeliveryTypeSelect.value === 'PICKUP') {
+        pickupLocationGroup.style.display = 'block';
+    } else {
+        pickupLocationGroup.style.display = 'none';
+    }
+}
+
+// Set initial state and add change listener
+togglePickupLocationTypes();
+fetchDeliveryTypeSelect.addEventListener('change', togglePickupLocationTypes);
 
     /* ------------------- Event Listeners ------------------- */
 
@@ -1757,7 +1786,7 @@ const openEditMethodModal = (tr, shippingMethod) => {
             )
         ),
         createElement('div', { className: 'cso-form-group' },
-            createElement('label', { for: 'cso-product-name' }, 'Product'),
+            createElement('label', { for: 'cso-product-name' }, 'Display Name'),
             createElement('input', { type: 'text', id: 'cso-product-name', placeholder: 'Enter product', value: methodData.product || '' })
         ),
         // Fetch Configuration Toggle
@@ -1837,6 +1866,35 @@ createElement('div', { className: 'cso-form-group' },
 
     // Add "X" close button to the Edit Method modal
     addCloseButton(editModal, 'cso-edit-method-modal-overlay');
+
+// Grab the fetch Delivery type select and the pickup location group from the edit modal
+const fetchDeliveryTypeSelectEdit = editModal.querySelector('#cso-fetch-delivery-type');
+const pickupLocationGroupEdit = editModal.querySelector('label[for="cso-fetch-pickup-location-types"]').parentElement;
+
+// Add a help text to the pickup location label in the edit modal
+const pickupLocationLabelEdit = editModal.querySelector('label[for="cso-fetch-pickup-location-types"]');
+if (pickupLocationLabelEdit) {
+    const helpTextEdit = document.createElement('small');
+    helpTextEdit.style.display = 'block';
+    helpTextEdit.style.fontSize = '11px';
+    helpTextEdit.style.color = '#6c757d';
+    helpTextEdit.textContent = 'Hold cmd to select several options';
+    pickupLocationLabelEdit.appendChild(helpTextEdit);
+}
+
+// Function to toggle the pickup location types field in the edit modal
+function togglePickupLocationTypesEdit() {
+    if (fetchDeliveryTypeSelectEdit.value === 'PICKUP') {
+        pickupLocationGroupEdit.style.display = 'block';
+    } else {
+        pickupLocationGroupEdit.style.display = 'none';
+    }
+}
+
+// Set initial state and add change listener for the edit modal
+togglePickupLocationTypesEdit();
+fetchDeliveryTypeSelectEdit.addEventListener('change', togglePickupLocationTypesEdit);
+
 
     /* ------------------- Event Listeners ------------------- */
 
