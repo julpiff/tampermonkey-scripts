@@ -1,15 +1,16 @@
 // ==UserScript==
 // @name         Custom Booking Methods Builder
 // @namespace    http://tampermonkey.net/
-// @version      1.11
+// @version      1.2
 // @description  Build and manage custom_booking_methods via a user-friendly interface with API integration, including new actions and parameters
 // @author       julpif
-// @match        https://mad.ingrid.com/*a
+// @match        https://mad.ingrid.com/*
 // @match        https://mad-stage.ingrid.com/*
 // @grant        unsafeWindow
 // @run-at       document-idle
 // @updateURL    https://raw.githubusercontent.com/julpiff/tampermonkey-scripts/refs/heads/main/Custom%20Booking%20Methods%20Builder
 // @downloadURL  https://raw.githubusercontent.com/julpiff/tampermonkey-scripts/refs/heads/main/Custom%20Booking%20Methods%20Builder
+// @require      https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js
 // ==/UserScript==
 
 (function() {
@@ -57,6 +58,73 @@
         });
         return element;
     };
+
+// Function to add move arrows using GSAP animation (assumed to be defined elsewhere)
+function addMoveArrows(element) {
+    // Create up arrow button
+    const upBtn = document.createElement('button');
+    upBtn.innerHTML = '<i class="fas fa-arrow-up"></i>';
+    upBtn.className = 'move-arrow up-arrow';
+
+    // Create down arrow button
+    const downBtn = document.createElement('button');
+    downBtn.innerHTML = '<i class="fas fa-arrow-down"></i>';
+    downBtn.className = 'move-arrow down-arrow';
+
+    // Try to attach them to a header, otherwise stick 'em at the top
+    let header = element.querySelector('.cbm-step-header') ||
+                 element.querySelector('.cbm-filter-header') ||
+                 element.querySelector('.cbm-action-header');
+    if (header) {
+        header.appendChild(upBtn);
+        header.appendChild(downBtn);
+    } else {
+        element.insertBefore(upBtn, element.firstChild);
+        element.insertBefore(downBtn, element.firstChild);
+    }
+
+    // Hook up the bloody move actions using GSAP
+    upBtn.addEventListener('click', () => moveElementGSAP(element, 'up'));
+    downBtn.addEventListener('click', () => moveElementGSAP(element, 'down'));
+}
+
+// Example GSAP move function – shrinks to 100px, reorders, then expands back.
+function moveElementGSAP(element, direction) {
+    const distance = element.offsetHeight;
+    let targetElement;
+    if (direction === 'up' && element.previousElementSibling) {
+        targetElement = element.previousElementSibling;
+    } else if (direction === 'down' && element.nextElementSibling) {
+        targetElement = element.nextElementSibling;
+    } else {
+        return;
+    }
+
+    // Collapse any expanded address fields on the current element and its neighbour
+    collapseAddressContainers(element);
+    collapseAddressContainers(targetElement);
+
+    let tl = gsap.timeline({
+        onComplete: function() {
+            if (direction === 'up') {
+                element.parentNode.insertBefore(element, targetElement);
+            } else if (direction === 'down') {
+                element.parentNode.insertBefore(targetElement, element);
+            }
+            gsap.set(element, { y: 0 });
+            gsap.set(targetElement, { y: 0 });
+            element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    });
+
+    if (direction === 'up') {
+        tl.to(element, { duration: 0.3, y: -distance, ease: "power1.inOut" }, 0)
+          .to(targetElement, { duration: 0.3, y: distance, ease: "power1.inOut" }, 0);
+    } else if (direction === 'down') {
+        tl.to(element, { duration: 0.3, y: distance, ease: "power1.inOut" }, 0)
+          .to(targetElement, { duration: 0.3, y: -distance, ease: "power1.inOut" }, 0);
+    }
+}
 
      /* ------------------- API Call ------------------- */
     function fetchShippingMethods(callback) {
@@ -190,6 +258,18 @@ function removeOuterQuotes(param) {
         }
     }
     return param;
+}
+
+    function collapseAddressContainers(element) {
+    const wrappers = element.querySelectorAll('.cbm-custom-address-wrapper');
+    wrappers.forEach(wrapper => {
+        const addressContainer = wrapper.querySelector('.cbm-custom-address-parameters');
+        const toggleBtn = wrapper.querySelector('.cbm-address-toggle-btn');
+        if (addressContainer && addressContainer.style.display === 'block') {
+            addressContainer.style.display = 'none';
+            if (toggleBtn) toggleBtn.textContent = 'Expand Address Fields';
+        }
+    });
 }
 
 /**
@@ -814,85 +894,90 @@ function populateBothShippingMethodsDropdowns(bookingSelectElement, returnSelect
         { value: 'use_customer_info_as_gcd_buyer_contact', label: 'Use Customer Info as GCD Buyer Contact' } // no params
     ]);
 
-    const createFilterForm = (filterData) => {
-        filterData = filterData ?? {};
-        const filterDiv = createElement('div', { className: 'cbm-filter' },
-            createElement('div', { className: 'cbm-filter-header' },
-                createElement('i', { className: 'fas fa-filter' }),
-                'Filter'
-            ),
-            createElement('input', {
-                type: 'text',
-                className: 'cbm-filter-input',
-                placeholder: 'Enter filter expression (e.g., shipment.weight > 10)',
-                value: filterData.expression ? filterData.expression : ''
-            }),
-            createElement('button', {
-                className: 'cbm-remove-filter-btn',
-                innerHTML: `<i class="fas fa-times"></i> Remove`,
-                style: 'margin-top: 5px; padding: 4px 8px; font-size: 12px;'
-            })
-        );
+function createFilterForm(filterData = {}) {
+    const filterDiv = createElement('div', { className: 'cbm-filter' },
+        createElement('div', { className: 'cbm-filter-header' },
+            createElement('i', { className: 'fas fa-filter' }),
+            'Filter'
+        ),
+        createElement('input', {
+            type: 'text',
+            className: 'cbm-filter-input',
+            placeholder: 'Enter filter expression (e.g., shipment.weight > 10)',
+            value: filterData.expression ? filterData.expression : ''
+        }),
+        createElement('button', {
+            className: 'cbm-remove-filter-btn',
+            innerHTML: `<i class="fas fa-times"></i> Remove`,
+            style: 'margin-top: 5px; padding: 4px 8px; font-size: 12px;'
+        })
+    );
 
-        filterDiv.querySelector('.cbm-remove-filter-btn').addEventListener('click', () => {
-            filterDiv.remove();
-        });
+    // Attach move arrows to the filter element
+    addMoveArrows(filterDiv);
 
-        return filterDiv;
-    };
+    // Event listener to remove the filter
+    filterDiv.querySelector('.cbm-remove-filter-btn').addEventListener('click', () => {
+        filterDiv.remove();
+    });
 
-    const createActionForm = (availableActions, actionData) => {
-        actionData = actionData ?? {};
+    return filterDiv;
+}
 
-        const actionDiv = createElement('div', { className: 'cbm-action' },
-            createElement('div', { className: 'cbm-action-header' },
-                createElement('i', { className: 'fas fa-cogs' }),
-                'Action'
-            ),
-            createElement('select', { className: 'cbm-action-select' },
-                createElement('option', { value: '', disabled: true, selected: true }, 'Select Action'),
-                ...availableActions.map(a => createElement('option', { value: a.value }, a.label))
-            ),
-            createElement('div', { className: 'cbm-action-parameters' }),
-            createElement('button', {
-                className: 'cbm-remove-action-btn',
-                innerHTML: `<i class="fas fa-times"></i> Remove`,
-                style: 'margin-top: 5px; padding: 4px 8px; font-size: 12px;'
-            })
-        );
+function createActionForm(availableActions, actionData = {}) {
+    const actionDiv = createElement('div', { className: 'cbm-action' },
+        createElement('div', { className: 'cbm-action-header' },
+            createElement('i', { className: 'fas fa-cogs' }),
+            'Action'
+        ),
+        createElement('select', { className: 'cbm-action-select' },
+            createElement('option', { value: '', disabled: true, selected: true }, 'Select Action'),
+            ...availableActions.map(a => createElement('option', { value: a.value }, a.label))
+        ),
+        createElement('div', { className: 'cbm-action-parameters' }),
+        createElement('button', {
+            className: 'cbm-remove-action-btn',
+            innerHTML: `<i class="fas fa-times"></i> Remove`,
+            style: 'margin-top: 5px; padding: 4px 8px; font-size: 12px;'
+        })
+    );
 
-        actionDiv.querySelector('.cbm-remove-action-btn').addEventListener('click', () => {
-            actionDiv.remove();
-        });
+    // Attach move arrows to the action element
+    addMoveArrows(actionDiv);
 
-        if (actionData.expression) {
-            const regex = /^(\w+)\((.*)\)$/;
-            const match = actionData.expression.match(regex);
-            if (match) {
-                const actionSelect = match[1];
-                const actionValueRaw = match[2];
-                const actionSelectElement = actionDiv.querySelector('.cbm-action-select');
-                const actionParametersDiv = actionDiv.querySelector('.cbm-action-parameters');
+    // Remove action on click
+    actionDiv.querySelector('.cbm-remove-action-btn').addEventListener('click', () => {
+        actionDiv.remove();
+    });
 
-                if (actionSelectElement && actionParametersDiv) {
-                    actionSelectElement.value = actionSelect;
-
-                    // Parse parameters for existing action if needed
-                    populateActionParameters(actionSelect, actionValueRaw, actionParametersDiv);
-                }
+    // If there's existing action data, prefill the form
+    if (actionData.expression) {
+        const regex = /^(\w+)\((.*)\)$/;
+        const match = actionData.expression.match(regex);
+        if (match) {
+            const actionSelect = match[1];
+            const actionValueRaw = match[2];
+            const actionSelectElement = actionDiv.querySelector('.cbm-action-select');
+            const actionParametersDiv = actionDiv.querySelector('.cbm-action-parameters');
+            if (actionSelectElement && actionParametersDiv) {
+                actionSelectElement.value = actionSelect;
+                // Populate the parameters using your bloody populateActionParameters function
+                populateActionParameters(actionSelect, actionValueRaw, actionParametersDiv);
             }
         }
+    }
 
-        const actionSelectElement = actionDiv.querySelector('.cbm-action-select');
-        actionSelectElement.addEventListener('change', (e) => {
-            const selectedAction = e.target.value;
-            const actionParametersDiv = actionDiv.querySelector('.cbm-action-parameters');
-            actionParametersDiv.innerHTML = '';
-            addActionParametersUI(selectedAction, actionParametersDiv);
-        });
+    // Event listener for changes to the action select
+    const actionSelectElement = actionDiv.querySelector('.cbm-action-select');
+    actionSelectElement.addEventListener('change', (e) => {
+        const selectedAction = e.target.value;
+        const actionParametersDiv = actionDiv.querySelector('.cbm-action-parameters');
+        actionParametersDiv.innerHTML = '';
+        addActionParametersUI(selectedAction, actionParametersDiv);
+    });
 
-        return actionDiv;
-    };
+    return actionDiv;
+}
 
 function addActionParametersUI(selectedAction, container) {
     // This function sets up the UI fields when an action is selected
@@ -1129,102 +1214,122 @@ function addActionParametersUI(selectedAction, container) {
     }
 }
 
-    function addCustomAddressParameters(container, showDropdown = true, paramContainer = null) {
-        if (showDropdown) {
-            const paramSelect = createElement('select', { className: 'cbm-custom-address-select' },
-                createElement('option', { value: 'ADDRESS_FROM' }, 'ADDRESS_FROM'),
-                createElement('option', { value: 'ADDRESS_TO' }, 'ADDRESS_TO'),
-                createElement('option', { value: 'ADDRESS_RETURN' }, 'ADDRESS_RETURN'),
-                createElement('option', { value: 'ADDRESS_CUSTOMER' }, 'ADDRESS_CUSTOMER')
-            );
-            container.appendChild(paramSelect);
-        }
-
-        const addressContainer = createElement('div', { className: 'cbm-custom-address-parameters' },
-            // Name
-            createElement('div', { className: 'cbm-form-group' },
-                createElement('label', {}, 'Name'),
-                createElement('input', { type: 'text', className: 'cbm-custom-address-name', placeholder: 'Enter name' })
-            ),
-            // Address Lines
-            createElement('div', { className: 'cbm-form-group' },
-                createElement('label', {}, 'Address Lines'),
-                createElement('textarea', { className: 'cbm-custom-address-lines', placeholder: 'Enter address lines, separated by commas' })
-            ),
-            // Apartment Number
-            createElement('div', { className: 'cbm-form-group' },
-                createElement('label', {}, 'Apartment Number'),
-                createElement('input', { type: 'text', className: 'cbm-custom-address-apartment-number', placeholder: 'Enter apartment number' })
-            ),
-            // Attn
-            createElement('div', { className: 'cbm-form-group' },
-                createElement('label', {}, 'Attention (Attn)'),
-                createElement('input', { type: 'text', className: 'cbm-custom-address-attn', placeholder: 'Enter attn' })
-            ),
-            // Care Of
-            createElement('div', { className: 'cbm-form-group' },
-                createElement('label', {}, 'Care Of'),
-                createElement('input', { type: 'text', className: 'cbm-custom-address-care-of', placeholder: 'Enter care_of' })
-            ),
-            // City
-            createElement('div', { className: 'cbm-form-group' },
-                createElement('label', {}, 'City'),
-                createElement('input', { type: 'text', className: 'cbm-custom-address-city', placeholder: 'Enter city' })
-            ),
-            // Region
-            createElement('div', { className: 'cbm-form-group' },
-                createElement('label', {}, 'Region'),
-                createElement('input', { type: 'text', className: 'cbm-custom-address-region', placeholder: 'Enter region' })
-            ),
-            // Subregion
-            createElement('div', { className: 'cbm-form-group' },
-                createElement('label', {}, 'Subregion'),
-                createElement('input', { type: 'text', className: 'cbm-custom-address-subregion', placeholder: 'Enter subregion' })
-            ),
-            // Street
-            createElement('div', { className: 'cbm-form-group' },
-                createElement('label', {}, 'Street'),
-                createElement('input', { type: 'text', className: 'cbm-custom-address-street', placeholder: 'Enter street' })
-            ),
-            // Street Number
-            createElement('div', { className: 'cbm-form-group' },
-                createElement('label', {}, 'Street Number'),
-                createElement('input', { type: 'text', className: 'cbm-custom-address-street-number', placeholder: 'Enter street number' })
-            ),
-            // Door Code
-            createElement('div', { className: 'cbm-form-group' },
-                createElement('label', {}, 'Door Code'),
-                createElement('input', { type: 'text', className: 'cbm-custom-address-door-code', placeholder: 'Enter door code' })
-            ),
-            // Floor Number
-            createElement('div', { className: 'cbm-form-group' },
-                createElement('label', {}, 'Floor Number'),
-                createElement('input', { type: 'text', className: 'cbm-custom-address-floor-number', placeholder: 'Enter floor number' })
-            ),
-            // Postal Code
-            createElement('div', { className: 'cbm-form-group' },
-                createElement('label', {}, 'Postal Code'),
-                createElement('input', { type: 'text', className: 'cbm-custom-address-postal-code', placeholder: 'Enter postal code' })
-            ),
-            // Country
-            createElement('div', { className: 'cbm-form-group' },
-                createElement('label', {}, 'Country'),
-                createElement('input', { type: 'text', className: 'cbm-custom-address-country', placeholder: 'Enter country code' })
-            ),
-            // Coordinates
-            createElement('div', { className: 'cbm-form-group' },
-                createElement('label', {}, 'Coordinates (Latitude, Longitude)'),
-                createElement('input', { type: 'number', className: 'cbm-custom-address-lat', placeholder: 'Enter latitude' }),
-                createElement('input', { type: 'number', className: 'cbm-custom-address-lng', placeholder: 'Enter longitude' })
-            )
+function addCustomAddressParameters(container, showDropdown = true, paramContainer = null) {
+    if (showDropdown) {
+        const paramSelect = createElement('select', { className: 'cbm-custom-address-select' },
+            createElement('option', { value: 'ADDRESS_FROM' }, 'ADDRESS_FROM'),
+            createElement('option', { value: 'ADDRESS_TO' }, 'ADDRESS_TO'),
+            createElement('option', { value: 'ADDRESS_RETURN' }, 'ADDRESS_RETURN'),
+            createElement('option', { value: 'ADDRESS_CUSTOMER' }, 'ADDRESS_CUSTOMER')
         );
-
-        if (paramContainer) {
-            paramContainer.appendChild(addressContainer);
-        } else {
-            container.appendChild(addressContainer);
-        }
+        container.appendChild(paramSelect);
     }
+
+    // Create a wrapper for collapsible address fields
+    const wrapper = createElement('div', { className: 'cbm-custom-address-wrapper', style: 'margin-top: 5px;' });
+
+    // Create the bloody toggle button
+    const toggleBtn = createElement('button', { className: 'cbm-address-toggle-btn', style: 'margin-bottom: 5px; font-size: 12px;' }, 'Expand Address Fields');
+    wrapper.appendChild(toggleBtn);
+
+    // Create the address container, hidden by default
+    const addressContainer = createElement('div', { className: 'cbm-custom-address-parameters', style: 'display: none;' },
+        // Name
+        createElement('div', { className: 'cbm-form-group' },
+            createElement('label', {}, 'Name'),
+            createElement('input', { type: 'text', className: 'cbm-custom-address-name', placeholder: 'Enter name' })
+        ),
+        // Address Lines
+        createElement('div', { className: 'cbm-form-group' },
+            createElement('label', {}, 'Address Lines'),
+            createElement('textarea', { className: 'cbm-custom-address-lines', placeholder: 'Enter address lines, separated by commas' })
+        ),
+        // Apartment Number
+        createElement('div', { className: 'cbm-form-group' },
+            createElement('label', {}, 'Apartment Number'),
+            createElement('input', { type: 'text', className: 'cbm-custom-address-apartment-number', placeholder: 'Enter apartment number' })
+        ),
+        // Attn
+        createElement('div', { className: 'cbm-form-group' },
+            createElement('label', {}, 'Attention (Attn)'),
+            createElement('input', { type: 'text', className: 'cbm-custom-address-attn', placeholder: 'Enter attn' })
+        ),
+        // Care Of
+        createElement('div', { className: 'cbm-form-group' },
+            createElement('label', {}, 'Care Of'),
+            createElement('input', { type: 'text', className: 'cbm-custom-address-care-of', placeholder: 'Enter care_of' })
+        ),
+        // City
+        createElement('div', { className: 'cbm-form-group' },
+            createElement('label', {}, 'City'),
+            createElement('input', { type: 'text', className: 'cbm-custom-address-city', placeholder: 'Enter city' })
+        ),
+        // Region
+        createElement('div', { className: 'cbm-form-group' },
+            createElement('label', {}, 'Region'),
+            createElement('input', { type: 'text', className: 'cbm-custom-address-region', placeholder: 'Enter region' })
+        ),
+        // Subregion
+        createElement('div', { className: 'cbm-form-group' },
+            createElement('label', {}, 'Subregion'),
+            createElement('input', { type: 'text', className: 'cbm-custom-address-subregion', placeholder: 'Enter subregion' })
+        ),
+        // Street
+        createElement('div', { className: 'cbm-form-group' },
+            createElement('label', {}, 'Street'),
+            createElement('input', { type: 'text', className: 'cbm-custom-address-street', placeholder: 'Enter street' })
+        ),
+        // Street Number
+        createElement('div', { className: 'cbm-form-group' },
+            createElement('label', {}, 'Street Number'),
+            createElement('input', { type: 'text', className: 'cbm-custom-address-street-number', placeholder: 'Enter street number' })
+        ),
+        // Door Code
+        createElement('div', { className: 'cbm-form-group' },
+            createElement('label', {}, 'Door Code'),
+            createElement('input', { type: 'text', className: 'cbm-custom-address-door-code', placeholder: 'Enter door code' })
+        ),
+        // Floor Number
+        createElement('div', { className: 'cbm-form-group' },
+            createElement('label', {}, 'Floor Number'),
+            createElement('input', { type: 'text', className: 'cbm-custom-address-floor-number', placeholder: 'Enter floor number' })
+        ),
+        // Postal Code
+        createElement('div', { className: 'cbm-form-group' },
+            createElement('label', {}, 'Postal Code'),
+            createElement('input', { type: 'text', className: 'cbm-custom-address-postal-code', placeholder: 'Enter postal code' })
+        ),
+        // Country
+        createElement('div', { className: 'cbm-form-group' },
+            createElement('label', {}, 'Country'),
+            createElement('input', { type: 'text', className: 'cbm-custom-address-country', placeholder: 'Enter country code' })
+        ),
+        // Coordinates
+        createElement('div', { className: 'cbm-form-group' },
+            createElement('label', {}, 'Coordinates (Latitude, Longitude)'),
+            createElement('input', { type: 'number', className: 'cbm-custom-address-lat', placeholder: 'Enter latitude' }),
+            createElement('input', { type: 'number', className: 'cbm-custom-address-lng', placeholder: 'Enter longitude' })
+        )
+    );
+    wrapper.appendChild(addressContainer);
+
+    // Toggle the address container when the button is clicked
+    toggleBtn.addEventListener('click', () => {
+        if (addressContainer.style.display === 'none') {
+            addressContainer.style.display = 'block';
+            toggleBtn.textContent = 'Collapse Address Fields';
+        } else {
+            addressContainer.style.display = 'none';
+            toggleBtn.textContent = 'Expand Address Fields';
+        }
+    });
+
+    if (paramContainer) {
+        paramContainer.appendChild(wrapper);
+    } else {
+        container.appendChild(wrapper);
+    }
+}
 
 function populateActionParameters(actionSelect, actionValueRaw, actionParametersDiv) {
     function safeParseJSON(str) {
@@ -1953,34 +2058,35 @@ const openAddMethodModal = (parentOverlay, methodData = null) => {
     openModal(addModalOverlay);
     addCloseButton(addModal, 'cbm-add-method-modal-overlay');
 
-    // Populate both dropdowns with one API call
+    // Populate both dropdowns with shipping methods
     const bookingMethodSelect = addModal.querySelector('#cbm-booking-method');
     const returnMethodSelect = addModal.querySelector('#cbm-return-method');
     populateBothShippingMethodsDropdowns(bookingMethodSelect, returnMethodSelect);
 
-    // Add event listener for the "Add Return Booking" toggle
+    // Toggle the Return Booking container
     const returnBookingToggle = addModal.querySelector('#cbm-return-booking-toggle');
     const returnBookingContainer = addModal.querySelector('.cbm-return-booking-container');
     returnBookingToggle.addEventListener('change', function() {
         returnBookingContainer.style.display = this.checked ? 'block' : 'none';
     });
 
-    // Re-add the steps toggle event listener (using 'change' event)
+    // Toggle the Steps container
     const stepsToggle = addModal.querySelector('#cbm-steps-toggle');
     const stepsContainer = addModal.querySelector('.cbm-steps-container');
     stepsToggle.addEventListener('change', function() {
         stepsContainer.style.display = this.checked ? 'block' : 'none';
     });
 
+    // Add a bloody step when the button is clicked – ensure your addStepField function calls addMoveArrows on the new step
     addModal.querySelector('#cbm-add-step-btn').addEventListener('click', () => {
         const stepsFields = addModal.querySelector('.cbm-steps-fields');
         addStepField(stepsFields);
     });
 
+    // Cancel and Save buttons
     addModal.querySelector('#cbm-cancel-method-btn').addEventListener('click', () => {
         closeModal(addModalOverlay);
     });
-
     addModal.querySelector('#cbm-save-method-btn').addEventListener('click', () => {
         saveMethod(addModal, addBookingMethodRow, addModalOverlay);
     });
@@ -2016,110 +2122,81 @@ const openAddMethodModal = (parentOverlay, methodData = null) => {
             }
         };
 
-        const addStepField = (container, stepData = null) => {
-            const availableActions = getAvailableActions();
-            const stepDiv = createElement('div', { className: 'cbm-step-field' },
-                createElement('div', { className: 'cbm-step-header' },
-                    createElement('i', { className: 'fas fa-tasks' }),
-                    'Step'
-                ),
-                createElement('div', { className: 'cbm-form-group' },
-                    createElement('label', { for: 'cbm-step-name' }, 'Step Name'),
-                    createElement('input', { type: 'text', className: 'cbm-step-name', placeholder: 'Enter step name', value: stepData ? stepData.name : '' })
-                ),
-                createElement('div', { className: 'cbm-form-group' },
-                    createElement('label', {}, 'Filters'),
-                    createElement('button', { className: 'cbm-button secondary cbm-add-filter-btn', innerHTML: `<i class="fas fa-plus"></i> Add Filter` }),
-                    createElement('div', { className: 'cbm-filters-fields' })
-                ),
-                createElement('div', { className: 'cbm-form-group' },
-                    createElement('label', {}, 'Actions'),
-                    createElement('button', { className: 'cbm-button secondary cbm-add-action-btn', innerHTML: `<i class="fas fa-plus"></i> Add Action` }),
-                    createElement('div', { className: 'cbm-actions-fields' })
-                ),
-                createElement('button', {
-                    className: 'cbm-button danger cbm-remove-step-btn',
-                    innerHTML: `<i class="fas fa-times"></i> Remove Step`,
-                    style: 'margin-top: 10px;'
-                })
-            );
+function addStepField(container, stepData = null) {
+    const availableActions = getAvailableActions();
+    const stepDiv = createElement('div', { className: 'cbm-step-field' },
+        createElement('div', { className: 'cbm-step-header' },
+            createElement('i', { className: 'fas fa-tasks' }),
+            'Step'
+        ),
+        createElement('div', { className: 'cbm-form-group' },
+            createElement('label', { for: 'cbm-step-name' }, 'Step Name'),
+            createElement('input', { type: 'text', className: 'cbm-step-name', placeholder: 'Enter step name', value: stepData ? stepData.name : '' })
+        ),
+        createElement('div', { className: 'cbm-form-group' },
+            createElement('label', {}, 'Filters'),
+            createElement('button', { className: 'cbm-button secondary cbm-add-filter-btn', innerHTML: `<i class="fas fa-plus"></i> Add Filter` }),
+            createElement('div', { className: 'cbm-filters-fields' })
+        ),
+        createElement('div', { className: 'cbm-form-group' },
+            createElement('label', {}, 'Actions'),
+            createElement('button', { className: 'cbm-button secondary cbm-add-action-btn', innerHTML: `<i class="fas fa-plus"></i> Add Action` }),
+            createElement('div', { className: 'cbm-actions-fields' })
+        ),
+        createElement('button', {
+            className: 'cbm-button danger cbm-remove-step-btn',
+            innerHTML: `<i class="fas fa-times"></i> Remove Step`,
+            style: 'margin-top: 10px;'
+        })
+    );
 
-stepDiv.querySelector('.cbm-add-filter-btn').addEventListener('click', () => {
-    const filtersFields = stepDiv.querySelector('.cbm-filters-fields');
-    const newFilter = createFilterForm();
-    filtersFields.appendChild(newFilter);
-    newFilter.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    // Add bloody move arrows to the step element
+    addMoveArrows(stepDiv);
 
-    const observer = new IntersectionObserver((entries, observer) => {
-        entries.forEach(entry => {
-            if (entry.isIntersecting) {
-                newFilter.classList.add('scale-animation');
-                setTimeout(() => {
-                    newFilter.classList.remove('scale-animation');
-                }, 500);
-                observer.disconnect();
-            }
-        });
-    }, { threshold: 0.8 });
-    observer.observe(newFilter);
-});
+    // Event listener for adding a filter
+    stepDiv.querySelector('.cbm-add-filter-btn').addEventListener('click', () => {
+        const filtersFields = stepDiv.querySelector('.cbm-filters-fields');
+        const newFilter = createFilterForm();
+        filtersFields.appendChild(newFilter);
+        newFilter.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
 
-stepDiv.querySelector('.cbm-add-action-btn').addEventListener('click', () => {
-    const actionsFields = stepDiv.querySelector('.cbm-actions-fields');
-    const newAction = createActionForm(availableActions);
-    actionsFields.appendChild(newAction);
-    newAction.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    // Event listener for adding an action
+    stepDiv.querySelector('.cbm-add-action-btn').addEventListener('click', () => {
+        const actionsFields = stepDiv.querySelector('.cbm-actions-fields');
+        const newAction = createActionForm(availableActions);
+        actionsFields.appendChild(newAction);
+        newAction.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
 
-    const observer = new IntersectionObserver((entries, observer) => {
-        entries.forEach(entry => {
-            if (entry.isIntersecting) {
-                newAction.classList.add('scale-animation');
-                setTimeout(() => {
-                    newAction.classList.remove('scale-animation');
-                }, 500);
-                observer.disconnect();
-            }
-        });
-    }, { threshold: 0.8 });
-    observer.observe(newAction);
-});
+    // Remove step event
+    stepDiv.querySelector('.cbm-remove-step-btn').addEventListener('click', () => {
+        stepDiv.remove();
+    });
 
-            stepDiv.querySelector('.cbm-remove-step-btn').addEventListener('click', () => {
-                stepDiv.remove();
+    // If there's existing step data, prefill filters and actions
+    if (stepData) {
+        const filtersFields = stepDiv.querySelector('.cbm-filters-fields');
+        if (stepData.filters && stepData.filters.length > 0) {
+            stepData.filters.forEach(filter => {
+                filtersFields.appendChild(createFilterForm(filter));
             });
+        }
+        const actionsFields = stepDiv.querySelector('.cbm-actions-fields');
+        if (stepData.actions && stepData.actions.length > 0) {
+            stepData.actions.forEach(action => {
+                actionsFields.appendChild(createActionForm(availableActions, action));
+            });
+        }
+    }
 
-            if (stepData) {
-                const filtersFields = stepDiv.querySelector('.cbm-filters-fields');
-                if (stepData.filters && stepData.filters.length > 0) {
-                    stepData.filters.forEach(filter => {
-                        filtersFields.appendChild(createFilterForm(filter));
-                    });
-                }
-
-                const actionsFields = stepDiv.querySelector('.cbm-actions-fields');
-                if (stepData.actions && stepData.actions.length > 0) {
-                    stepData.actions.forEach(action => {
-                        actionsFields.appendChild(createActionForm(availableActions, action));
-                    });
-                }
-            }
-
-            container.appendChild(stepDiv);
-    // Only scroll and animate if this is a freshly added step (not pre-filled)
+    container.appendChild(stepDiv);
+    // Only scroll if we're adding a new step (i.e. no pre-existing data)
     if (!stepData) {
         stepDiv.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        const observer = new IntersectionObserver((entries, observer) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    stepDiv.classList.add('scale-animation');
-                    setTimeout(() => stepDiv.classList.remove('scale-animation'), 500);
-                    observer.disconnect();
-                }
-            });
-        }, { threshold: 0.8 });
-        observer.observe(stepDiv);
     }
-        };
+}
+
 
         const saveMethod = (addModal, addBookingMethodRow, addModalOverlay) => {
             const method = addModal.querySelector('#cbm-method').value.trim();
@@ -2477,7 +2554,7 @@ const openEditMethodModal = (tr, method) => {
         // Return booking toggle
         createElement('div', { className: 'cbm-form-group cbm-toggle-switch' },
             createElement('label', { for: 'cbm-return-booking-toggle' }, 'Add Return Booking?'),
-            createElement('input', { type: 'checkbox', id: 'cbm-return-booking-toggle', checked: methodData.return_booking ? true : false })
+            createElement('input', { type: 'checkbox', id: 'cbm-return-booking-toggle', checked: !!methodData.return_booking })
         ),
         // Return booking container
         createElement('div', { className: 'cbm-return-booking-container', style: methodData.return_booking ? 'display: block;' : 'display: none;' },
@@ -2504,9 +2581,9 @@ const openEditMethodModal = (tr, method) => {
         // Steps toggle and container
         createElement('div', { className: 'cbm-form-group cbm-toggle-switch' },
             createElement('label', { for: 'cbm-steps-toggle' }, 'Add Steps?'),
-            createElement('input', { type: 'checkbox', id: 'cbm-steps-toggle', checked: (methodData.steps && methodData.steps.length > 0) ? true : false })
+            createElement('input', { type: 'checkbox', id: 'cbm-steps-toggle', checked: !!(methodData.steps && methodData.steps.length) })
         ),
-        createElement('div', { className: 'cbm-steps-container', style: (methodData.steps && methodData.steps.length > 0) ? 'display: block;' : 'display: none;' },
+        createElement('div', { className: 'cbm-steps-container', style: (methodData.steps && methodData.steps.length) ? 'display: block;' : 'display: none;' },
             createElement('button', { className: 'cbm-button', id: 'cbm-add-step-btn' }, 'Add Step'),
             createElement('div', { className: 'cbm-steps-fields' })
         ),
@@ -2521,19 +2598,19 @@ const openEditMethodModal = (tr, method) => {
     openModal(editModalOverlay);
     addCloseButton(editModal, 'cbm-edit-method-modal-overlay');
 
-    // Populate both dropdowns with one API call, preserving selected values
+    // Populate dropdowns with current selections
     const bookingMethodSelect = editModal.querySelector('#cbm-booking-method');
     const returnMethodSelect = editModal.querySelector('#cbm-return-method');
     populateBothShippingMethodsDropdowns(bookingMethodSelect, returnMethodSelect, methodData.booking_method || '', methodData.return_booking?.method || '');
 
-    // Add event listener for the "Add Return Booking" toggle
+    // Toggle the Return Booking container
     const returnBookingToggle = editModal.querySelector('#cbm-return-booking-toggle');
     const returnBookingContainer = editModal.querySelector('.cbm-return-booking-container');
     returnBookingToggle.addEventListener('change', function() {
         returnBookingContainer.style.display = this.checked ? 'block' : 'none';
     });
 
-    // Re-add the steps toggle event listener
+    // Toggle the Steps container
     const stepsToggle = editModal.querySelector('#cbm-steps-toggle');
     const stepsContainer = editModal.querySelector('.cbm-steps-container');
     stepsToggle.addEventListener('change', function() {
@@ -2544,7 +2621,7 @@ const openEditMethodModal = (tr, method) => {
         addStepField(stepsFields);
     });
 
-    if (methodData.steps && methodData.steps.length > 0) {
+    if (methodData.steps && methodData.steps.length) {
         const stepsFields = editModal.querySelector('.cbm-steps-fields');
         methodData.steps.forEach(step => {
             addStepField(stepsFields, step);
@@ -2554,7 +2631,6 @@ const openEditMethodModal = (tr, method) => {
     editModal.querySelector('#cbm-cancel-method-btn').addEventListener('click', () => {
         closeModal(editModalOverlay);
     });
-
     editModal.querySelector('#cbm-update-method-btn').addEventListener('click', () => {
         updateMethod(editModal, tr, methodData, editModalOverlay);
     });
