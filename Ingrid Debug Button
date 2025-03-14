@@ -14,35 +14,27 @@
 (function() {
     'use strict';
 
-    // Just so ESLint doesn’t act like an uptight tosser
-    // We define all constants and variables up here.
-    const SESSION_ID_DISPLAY_ID = 'ingrid-session-id';
-    const DEBUG_BUTTON_ID = 'ingrid-debug-button';
-    const WIDGET_IFRAME_ID = 'ingrid-widget-iframe';
-
+    // Global variables for session management. Once we’ve got a session ID, we don’t update it further.
     let currentSessionId = null;
     let iframeObserver = null;
     let observer = null;
 
-    /**
-     * Bollocks: Function to extract session ID from iframe src
-     * @param {string} src
-     * @returns {string|null}
-     */
-    function extractSessionId(src) {
-        const needle = 'sessionId%22%3A%22'; // Decoded 'sessionId":"'
-        const index = src.indexOf(needle);
-        if (index === -1) return null;
+    // Constants for our DOM elements. No messing about.
+    const SESSION_ID_DISPLAY_ID = 'ingrid-session-id';
+    const DEBUG_BUTTON_ID = 'ingrid-debug-button';
+    const WIDGET_IFRAME_ID = 'ingrid-widget-iframe';
 
-        const start = index + needle.length;
-        const lengthUUID = 36;
-        return src.substring(start, start + lengthUUID);
+    // Update the session ID display and debug button—only once, so we don’t keep updating like a twat.
+    function updateSessionId(sessionId) {
+        if (currentSessionId) return; // Already got one, so bugger off with any new ones.
+        if (sessionId) {
+            currentSessionId = sessionId;
+            createOrUpdateSessionIdDisplay(sessionId);
+            createOrUpdateDebugButton(sessionId);
+        }
     }
 
-    /**
-     * Son of a bitch: Creates or updates the session ID display
-     * @param {string} sessionId
-     */
+    // Create or update the session ID display. It’s bloody simple.
     function createOrUpdateSessionIdDisplay(sessionId) {
         let sessionIdDisplay = document.getElementById(SESSION_ID_DISPLAY_ID);
         if (!sessionIdDisplay) {
@@ -64,13 +56,10 @@
             sessionIdDisplay.style.webkitUserSelect = 'text';
             document.body.appendChild(sessionIdDisplay);
         }
-        sessionIdDisplay.textContent = `${sessionId}`;
+        sessionIdDisplay.textContent = sessionId;
     }
 
-    /**
-     * Bloody nuisance: Creates or updates the debug button
-     * @param {string} sessionId
-     */
+    // Create or update the debug button so you can open the damn debug page.
     function createOrUpdateDebugButton(sessionId) {
         let debugButton = document.getElementById(DEBUG_BUTTON_ID);
         if (!debugButton) {
@@ -81,100 +70,141 @@
             debugButton.style.bottom = '45px';
             debugButton.style.right = '10px';
             debugButton.style.padding = '10px 15px';
-            debugButton.style.backgroundColor = '#001F3F'; // Navy blue
-            debugButton.style.color = '#ffffff'; // White text
+            debugButton.style.backgroundColor = '#001F3F';
+            debugButton.style.color = '#ffffff';
             debugButton.style.border = 'none';
             debugButton.style.borderRadius = '5px';
             debugButton.style.cursor = 'pointer';
             debugButton.style.fontFamily = 'Arial, sans-serif';
             debugButton.style.zIndex = '10000';
-
-            // Append the little bastard to the body
             document.body.appendChild(debugButton);
         }
-
-        // Ditch any old event listeners, so we don’t get stacked up like a dog's dinner
+        // Wipe out any old event listeners like a proper muppet.
         const newDebugButton = debugButton.cloneNode(true);
         debugButton.parentNode.replaceChild(newDebugButton, debugButton);
-        debugButton = newDebugButton;
-
-        // Add the click event to open the debug page
-        debugButton.addEventListener('click', () => {
+        newDebugButton.addEventListener('click', () => {
             window.open(`https://debug.ingrid.com/session-history?id=${sessionId}`, '_blank');
         });
     }
 
-    /**
-     * Wanker: Removes the session ID display and debug button
-     */
-    function removeDebugElements() {
-        const sessionIdDisplay = document.getElementById(SESSION_ID_DISPLAY_ID);
-        const debugButton = document.getElementById(DEBUG_BUTTON_ID);
-        if (sessionIdDisplay) {
-            sessionIdDisplay.remove();
-        }
-        if (debugButton) {
-            debugButton.remove();
+    // Extract the first Ingrid code from GraphQL responses and yank out the session ID.
+    function extractFirstIngridCodeAndDisplay(data) {
+        let firstCode = null;
+        (function search(obj) {
+            if (firstCode) return; // Found it, so bugger off.
+            if (obj && typeof obj === 'object') {
+                if (Array.isArray(obj.availableDeliveryStrategies)) {
+                    for (const strategy of obj.availableDeliveryStrategies) {
+                        if (strategy && strategy.code && strategy.code.startsWith("ingrid")) {
+                            firstCode = strategy.code;
+                            break;
+                        }
+                    }
+                }
+                if (!firstCode) {
+                    for (const key in obj) {
+                        if (Object.prototype.hasOwnProperty.call(obj, key)) {
+                            search(obj[key]);
+                            if (firstCode) return;
+                        }
+                    }
+                }
+            }
+        })(data);
+
+        if (firstCode) {
+            // Yank the session ID from the first bloody set of brackets.
+            const match = firstCode.match(/^ingrid\[(.*?)\]/);
+            const sessionId = match && match[1] ? match[1] : firstCode;
+            updateSessionId(sessionId);
         }
     }
 
-    /**
-     * Big bastard: Handles the presence of the iframe
-     * Sets up the observer for its src changes, updates session ID, etc.
-     * @param {HTMLIFrameElement} iframe
-     */
+    // Intercept fetch calls for those damn GraphQL requests.
+    const origFetch = window.fetch;
+    window.fetch = function(input, init) {
+        const url = (typeof input === 'string') ? input : input.url;
+        if (url && url.includes("graphql?operationName=Proposal")) {
+            return origFetch(input, init).then(resp => {
+                const clone = resp.clone();
+                clone.json().then(data => {
+                    extractFirstIngridCodeAndDisplay(data);
+                }).catch(err => {
+                    // Well, fuck it if JSON parsing fails.
+                });
+                return resp;
+            });
+        }
+        return origFetch(input, init);
+    };
+
+    // Intercept XMLHttpRequest calls too—no half-arsed shite allowed.
+    const origXHROpen = XMLHttpRequest.prototype.open;
+    XMLHttpRequest.prototype.open = function(method, url, async, user, pass) {
+        this._url = url;
+        return origXHROpen.apply(this, arguments);
+    };
+
+    const origXHRSend = XMLHttpRequest.prototype.send;
+    XMLHttpRequest.prototype.send = function(data) {
+        if (this._url && this._url.includes("graphql?operationName=Proposal")) {
+            this.addEventListener("load", () => {
+                try {
+                    const responseData = JSON.parse(this.responseText);
+                    extractFirstIngridCodeAndDisplay(responseData);
+                } catch (e) {
+                    // Fuck it if JSON parsing fails—move on.
+                }
+            });
+        }
+        return origXHRSend.apply(this, arguments);
+    };
+
+    // Now for the widget iframe bullshit. This little git extracts the session ID from its src.
+    function extractSessionIdFromIframeSrc(src) {
+        const needle = 'sessionId%22%3A%22'; // Decodes to 'sessionId":"'
+        const index = src.indexOf(needle);
+        if (index === -1) return null;
+        const start = index + needle.length;
+        const lengthUUID = 36;
+        return src.substring(start, start + lengthUUID);
+    }
+
+    // Handle the iframe like a proper sod. Update session ID when its src changes.
     function handleIframe(iframe) {
         if (!iframe) return;
         const src = iframe.src;
-        const sessionId = extractSessionId(src);
-
-        if (sessionId && sessionId !== currentSessionId) {
-            currentSessionId = sessionId;
-            createOrUpdateSessionIdDisplay(sessionId);
-            createOrUpdateDebugButton(sessionId);
+        const sessionId = extractSessionIdFromIframeSrc(src);
+        if (sessionId) {
+            updateSessionId(sessionId);
         }
-
-        // If there's already a dedicated observer for this iframe, disconnect the sod
         if (iframeObserver) {
             iframeObserver.disconnect();
         }
-
-        // Observe changes in the iframe's src attribute
         iframeObserver = new MutationObserver((mutationList) => {
             mutationList.forEach(m => {
                 if (m.type === 'attributes' && m.attributeName === 'src') {
                     const newSrc = iframe.src;
-                    const newSessionId = extractSessionId(newSrc);
-                    if (newSessionId && newSessionId !== currentSessionId) {
-                        currentSessionId = newSessionId;
-                        createOrUpdateSessionIdDisplay(newSessionId);
-                        createOrUpdateDebugButton(newSessionId);
+                    const newSessionId = extractSessionIdFromIframeSrc(newSrc);
+                    if (newSessionId) {
+                        updateSessionId(newSessionId);
                     }
                 }
             });
         });
-
         iframeObserver.observe(iframe, { attributes: true });
     }
 
-    /**
-     * Gormless git: This function handles added nodes in the observer
-     * @param {Node} node
-     */
+    // When new nodes are added, check if it's that pesky widget iframe.
     function handleNodeAddition(node) {
         if (node.id === WIDGET_IFRAME_ID && node.tagName === 'IFRAME') {
             handleIframe(node);
         }
     }
 
-    /**
-     * Daft as a brush: This function handles removed nodes in the observer
-     * @param {Node} node
-     */
+    // Instead of wiping out our debug button when the iframe disappears, we simply disconnect its observer.
     function handleNodeRemoval(node) {
         if (node.id === WIDGET_IFRAME_ID && node.tagName === 'IFRAME') {
-            removeDebugElements();
-            currentSessionId = null;
             if (iframeObserver) {
                 iframeObserver.disconnect();
                 iframeObserver = null;
@@ -182,32 +212,17 @@
         }
     }
 
-    /**
-     * Bugger me sideways: This handles attribute changes for the entire doc
-     * (we might want to see if an iframe got replaced or something)
-     * @param {MutationRecord} mutation
-     */
+    // On attribute changes, if we lose the iframe, we don’t remove our damn debug button.
     function handleAttributeChange(mutation) {
         const iframe = document.getElementById(WIDGET_IFRAME_ID);
         if (iframe) {
             handleIframe(iframe);
-        } else {
-            removeDebugElements();
-            currentSessionId = null;
-            if (iframeObserver) {
-                iframeObserver.disconnect();
-                iframeObserver = null;
-            }
         }
     }
 
-    /**
-     * Bollocks: This is the callback for the main observer that watches the document.
-     * The forEach calls are now separate so ESLint doesn’t throw a tantrum.
-     * @param {MutationRecord[]} mutationsList
-     */
+    // The main mutation callback – keeps an eye on the document like a nosy git.
     function mutationCallback(mutationsList) {
-        for (const mutation of mutationsList) {
+        mutationsList.forEach(mutation => {
             if (mutation.type === 'childList') {
                 mutation.addedNodes.forEach(handleNodeAddition);
                 mutation.removedNodes.forEach(handleNodeRemoval);
@@ -215,12 +230,10 @@
             if (mutation.type === 'attributes') {
                 handleAttributeChange(mutation);
             }
-        }
+        });
     }
 
-    /**
-     * Give it a quick once-over to see if the little shit is already there
-     */
+    // Give it a once-over to see if the dodgy iframe is already there.
     function initialCheck() {
         const iframe = document.getElementById(WIDGET_IFRAME_ID);
         if (iframe) {
@@ -228,21 +241,14 @@
         }
     }
 
-    /**
-     * Right, let’s wait until the page is loaded before we start this observer fiasco
-     */
+    // On page load, set up our mutation observer.
     window.addEventListener('load', function() {
-        // Fire up the observer if it’s not already
         if (!observer) {
             observer = new MutationObserver(mutationCallback);
-            observer.observe(document.body, {
-                childList: true,
-                subtree: true,
-                attributes: true
-            });
+            observer.observe(document.body, { childList: true, subtree: true, attributes: true });
         }
-        // Check straight away if the bugger’s already in place
         initialCheck();
+        // Note: We don't unconditionally create the debug button here.
     });
 
 })();
