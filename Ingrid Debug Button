@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Ingrid Debug Button
 // @namespace    http://tampermonkey.net/
-// @version      1.4
+// @version      1.5
 // @description  Adds and manages a debug button and session ID display for Ingrid sessions.
 // @author       You
 // @exclude      https://debug.ingrid.com/*
@@ -14,19 +14,21 @@
 (function() {
     'use strict';
 
-    // Global variables for session management. Once we’ve got a session ID, we don’t update it further.
+    // Determine if we're on one of the mad sites.
+    const isMadSite = window.location.href.startsWith('https://mad-stage.ingrid.com/') ||
+                      window.location.href.startsWith('https://mad.ingrid.com/');
+
+    // Global variables for session management.
     let currentSessionId = null;
     let iframeObserver = null;
     let observer = null;
 
-    // Constants for our DOM elements. No messing about.
     const SESSION_ID_DISPLAY_ID = 'ingrid-session-id';
     const DEBUG_BUTTON_ID = 'ingrid-debug-button';
     const WIDGET_IFRAME_ID = 'ingrid-widget-iframe';
 
-    // Update the session ID display and debug button—only once, so we don’t keep updating like a twat.
     function updateSessionId(sessionId) {
-        if (currentSessionId) return; // Already got one, so bugger off with any new ones.
+        if (currentSessionId) return;
         if (sessionId) {
             currentSessionId = sessionId;
             createOrUpdateSessionIdDisplay(sessionId);
@@ -34,14 +36,14 @@
         }
     }
 
-    // Create or update the session ID display. It’s bloody simple.
     function createOrUpdateSessionIdDisplay(sessionId) {
         let sessionIdDisplay = document.getElementById(SESSION_ID_DISPLAY_ID);
         if (!sessionIdDisplay) {
             sessionIdDisplay = document.createElement('div');
             sessionIdDisplay.id = SESSION_ID_DISPLAY_ID;
             sessionIdDisplay.style.position = 'fixed';
-            sessionIdDisplay.style.bottom = '10px';
+            // Increase bottom by 50px if on mad site
+            sessionIdDisplay.style.bottom = isMadSite ? '80px' : '10px';
             sessionIdDisplay.style.right = '10px';
             sessionIdDisplay.style.padding = '5px 10px';
             sessionIdDisplay.style.backgroundColor = '#ffffff';
@@ -59,7 +61,6 @@
         sessionIdDisplay.textContent = sessionId;
     }
 
-    // Create or update the debug button so you can open the damn debug page.
     function createOrUpdateDebugButton(sessionId) {
         let debugButton = document.getElementById(DEBUG_BUTTON_ID);
         if (!debugButton) {
@@ -67,7 +68,8 @@
             debugButton.id = DEBUG_BUTTON_ID;
             debugButton.textContent = 'Debug';
             debugButton.style.position = 'fixed';
-            debugButton.style.bottom = '45px';
+            // Increase bottom by 50px if on mad site
+            debugButton.style.bottom = isMadSite ? '115px' : '45px';
             debugButton.style.right = '10px';
             debugButton.style.padding = '10px 15px';
             debugButton.style.backgroundColor = '#001F3F';
@@ -79,7 +81,7 @@
             debugButton.style.zIndex = '10000';
             document.body.appendChild(debugButton);
         }
-        // Wipe out any old event listeners like a proper muppet.
+        // Wipe out any old bloody event listeners.
         const newDebugButton = debugButton.cloneNode(true);
         debugButton.parentNode.replaceChild(newDebugButton, debugButton);
         newDebugButton.addEventListener('click', () => {
@@ -87,11 +89,12 @@
         });
     }
 
-    // Extract the first Ingrid code from GraphQL responses and yank out the session ID.
+    // The rest of your script remains as per your original code—fetch interception, iframe handling, mutation observers, etc.
+
     function extractFirstIngridCodeAndDisplay(data) {
         let firstCode = null;
         (function search(obj) {
-            if (firstCode) return; // Found it, so bugger off.
+            if (firstCode) return;
             if (obj && typeof obj === 'object') {
                 if (Array.isArray(obj.availableDeliveryStrategies)) {
                     for (const strategy of obj.availableDeliveryStrategies) {
@@ -113,14 +116,12 @@
         })(data);
 
         if (firstCode) {
-            // Yank the session ID from the first bloody set of brackets.
             const match = firstCode.match(/^ingrid\[(.*?)\]/);
             const sessionId = match && match[1] ? match[1] : firstCode;
             updateSessionId(sessionId);
         }
     }
 
-    // Intercept fetch calls for those damn GraphQL requests.
     const origFetch = window.fetch;
     window.fetch = function(input, init) {
         const url = (typeof input === 'string') ? input : input.url;
@@ -130,7 +131,7 @@
                 clone.json().then(data => {
                     extractFirstIngridCodeAndDisplay(data);
                 }).catch(err => {
-                    // Well, fuck it if JSON parsing fails.
+                    // Fuck it if JSON parsing fails.
                 });
                 return resp;
             });
@@ -138,7 +139,6 @@
         return origFetch(input, init);
     };
 
-    // Intercept XMLHttpRequest calls too—no half-arsed shite allowed.
     const origXHROpen = XMLHttpRequest.prototype.open;
     XMLHttpRequest.prototype.open = function(method, url, async, user, pass) {
         this._url = url;
@@ -153,16 +153,15 @@
                     const responseData = JSON.parse(this.responseText);
                     extractFirstIngridCodeAndDisplay(responseData);
                 } catch (e) {
-                    // Fuck it if JSON parsing fails—move on.
+                    // Fuck it if JSON parsing fails—carry on.
                 }
             });
         }
         return origXHRSend.apply(this, arguments);
     };
 
-    // Now for the widget iframe bullshit. This little git extracts the session ID from its src.
     function extractSessionIdFromIframeSrc(src) {
-        const needle = 'sessionId%22%3A%22'; // Decodes to 'sessionId":"'
+        const needle = 'sessionId%22%3A%22';
         const index = src.indexOf(needle);
         if (index === -1) return null;
         const start = index + needle.length;
@@ -170,7 +169,6 @@
         return src.substring(start, start + lengthUUID);
     }
 
-    // Handle the iframe like a proper sod. Update session ID when its src changes.
     function handleIframe(iframe) {
         if (!iframe) return;
         const src = iframe.src;
@@ -195,14 +193,12 @@
         iframeObserver.observe(iframe, { attributes: true });
     }
 
-    // When new nodes are added, check if it's that pesky widget iframe.
     function handleNodeAddition(node) {
         if (node.id === WIDGET_IFRAME_ID && node.tagName === 'IFRAME') {
             handleIframe(node);
         }
     }
 
-    // Instead of wiping out our debug button when the iframe disappears, we simply disconnect its observer.
     function handleNodeRemoval(node) {
         if (node.id === WIDGET_IFRAME_ID && node.tagName === 'IFRAME') {
             if (iframeObserver) {
@@ -212,7 +208,6 @@
         }
     }
 
-    // On attribute changes, if we lose the iframe, we don’t remove our damn debug button.
     function handleAttributeChange(mutation) {
         const iframe = document.getElementById(WIDGET_IFRAME_ID);
         if (iframe) {
@@ -220,7 +215,6 @@
         }
     }
 
-    // The main mutation callback – keeps an eye on the document like a nosy git.
     function mutationCallback(mutationsList) {
         mutationsList.forEach(mutation => {
             if (mutation.type === 'childList') {
@@ -233,7 +227,6 @@
         });
     }
 
-    // Give it a once-over to see if the dodgy iframe is already there.
     function initialCheck() {
         const iframe = document.getElementById(WIDGET_IFRAME_ID);
         if (iframe) {
@@ -241,14 +234,12 @@
         }
     }
 
-    // On page load, set up our mutation observer.
     window.addEventListener('load', function() {
         if (!observer) {
             observer = new MutationObserver(mutationCallback);
             observer.observe(document.body, { childList: true, subtree: true, attributes: true });
         }
         initialCheck();
-        // Note: We don't unconditionally create the debug button here.
     });
 
 })();
