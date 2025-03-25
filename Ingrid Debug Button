@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Ingrid Debug Button
 // @namespace    http://tampermonkey.net/
-// @version      1.5
-// @description  Adds and manages a debug button and session ID display for Ingrid sessions.
+// @version      1.6
+// @description  Adds and manages a debug button and session ID display for Ingrid sessions, and removes them if the shipwallet-container is missing.
 // @author       You
 // @exclude      https://debug.ingrid.com/*
 // @match        *://*/*
@@ -27,22 +27,42 @@
     const DEBUG_BUTTON_ID = 'ingrid-debug-button';
     const WIDGET_IFRAME_ID = 'ingrid-widget-iframe';
 
-    function updateSessionId(sessionId) {
-        if (currentSessionId) return;
-        if (sessionId) {
-            currentSessionId = sessionId;
-            createOrUpdateSessionIdDisplay(sessionId);
-            createOrUpdateDebugButton(sessionId);
+    // Remove debug elements and clear the stored session ID.
+    function removeDebugElements() {
+        const sessionIdDisplay = document.getElementById(SESSION_ID_DISPLAY_ID);
+        if (sessionIdDisplay) {
+            sessionIdDisplay.remove();
         }
+        const debugButton = document.getElementById(DEBUG_BUTTON_ID);
+        if (debugButton) {
+            debugButton.remove();
+        }
+        currentSessionId = null;
     }
 
+    // Update the session ID and its display, but only if the shipwallet container exists.
+    function updateSessionId(sessionId) {
+        if (!sessionId) return;
+        // Only update if the container is present.
+        if (!document.getElementById('shipwallet-container')) {
+            removeDebugElements();
+            return;
+        }
+        // Only update if we have a new session id.
+        if (currentSessionId === sessionId) return;
+        currentSessionId = sessionId;
+        createOrUpdateSessionIdDisplay(sessionId);
+        createOrUpdateDebugButton(sessionId);
+    }
+
+    // Create or update the session ID display element.
     function createOrUpdateSessionIdDisplay(sessionId) {
         let sessionIdDisplay = document.getElementById(SESSION_ID_DISPLAY_ID);
         if (!sessionIdDisplay) {
             sessionIdDisplay = document.createElement('div');
             sessionIdDisplay.id = SESSION_ID_DISPLAY_ID;
             sessionIdDisplay.style.position = 'fixed';
-            // Increase bottom by 50px if on mad site
+            // Increase bottom by 50px if on mad site.
             sessionIdDisplay.style.bottom = isMadSite ? '80px' : '10px';
             sessionIdDisplay.style.right = '10px';
             sessionIdDisplay.style.padding = '5px 10px';
@@ -61,6 +81,7 @@
         sessionIdDisplay.textContent = sessionId;
     }
 
+    // Create or update the debug button.
     function createOrUpdateDebugButton(sessionId) {
         let debugButton = document.getElementById(DEBUG_BUTTON_ID);
         if (!debugButton) {
@@ -68,7 +89,7 @@
             debugButton.id = DEBUG_BUTTON_ID;
             debugButton.textContent = 'Debug';
             debugButton.style.position = 'fixed';
-            // Increase bottom by 50px if on mad site
+            // Increase bottom by 50px if on mad site.
             debugButton.style.bottom = isMadSite ? '115px' : '45px';
             debugButton.style.right = '10px';
             debugButton.style.padding = '10px 15px';
@@ -81,7 +102,7 @@
             debugButton.style.zIndex = '10000';
             document.body.appendChild(debugButton);
         }
-        // Wipe out any old bloody event listeners.
+        // Remove any old event listeners by cloning the button.
         const newDebugButton = debugButton.cloneNode(true);
         debugButton.parentNode.replaceChild(newDebugButton, debugButton);
         newDebugButton.addEventListener('click', () => {
@@ -89,8 +110,7 @@
         });
     }
 
-    // The rest of your script remains as per your original code—fetch interception, iframe handling, mutation observers, etc.
-
+    // Extract the first Ingrid code and update the session ID.
     function extractFirstIngridCodeAndDisplay(data) {
         let firstCode = null;
         (function search(obj) {
@@ -122,6 +142,7 @@
         }
     }
 
+    // Intercept fetch calls for GraphQL Proposal operations.
     const origFetch = window.fetch;
     window.fetch = function(input, init) {
         const url = (typeof input === 'string') ? input : input.url;
@@ -131,7 +152,7 @@
                 clone.json().then(data => {
                     extractFirstIngridCodeAndDisplay(data);
                 }).catch(err => {
-                    // Fuck it if JSON parsing fails.
+                    // Ignore JSON parsing errors.
                 });
                 return resp;
             });
@@ -139,6 +160,7 @@
         return origFetch(input, init);
     };
 
+    // Intercept XMLHttpRequest calls.
     const origXHROpen = XMLHttpRequest.prototype.open;
     XMLHttpRequest.prototype.open = function(method, url, async, user, pass) {
         this._url = url;
@@ -153,13 +175,14 @@
                     const responseData = JSON.parse(this.responseText);
                     extractFirstIngridCodeAndDisplay(responseData);
                 } catch (e) {
-                    // Fuck it if JSON parsing fails—carry on.
+                    // Ignore JSON parsing errors.
                 }
             });
         }
         return origXHRSend.apply(this, arguments);
     };
 
+    // Extract session ID from the iframe src URL.
     function extractSessionIdFromIframeSrc(src) {
         const needle = 'sessionId%22%3A%22';
         const index = src.indexOf(needle);
@@ -169,6 +192,7 @@
         return src.substring(start, start + lengthUUID);
     }
 
+    // Handle the widget iframe.
     function handleIframe(iframe) {
         if (!iframe) return;
         const src = iframe.src;
@@ -193,12 +217,14 @@
         iframeObserver.observe(iframe, { attributes: true });
     }
 
+    // Handle node additions.
     function handleNodeAddition(node) {
         if (node.id === WIDGET_IFRAME_ID && node.tagName === 'IFRAME') {
             handleIframe(node);
         }
     }
 
+    // Handle node removal. We keep this in case the widget iframe is directly removed.
     function handleNodeRemoval(node) {
         if (node.id === WIDGET_IFRAME_ID && node.tagName === 'IFRAME') {
             if (iframeObserver) {
@@ -208,6 +234,7 @@
         }
     }
 
+    // Handle attribute changes in the DOM.
     function handleAttributeChange(mutation) {
         const iframe = document.getElementById(WIDGET_IFRAME_ID);
         if (iframe) {
@@ -215,6 +242,7 @@
         }
     }
 
+    // Callback for the MutationObserver.
     function mutationCallback(mutationsList) {
         mutationsList.forEach(mutation => {
             if (mutation.type === 'childList') {
@@ -225,8 +253,13 @@
                 handleAttributeChange(mutation);
             }
         });
+        // Check if the "shipwallet-container" exists. If not, remove debug elements.
+        if (!document.getElementById('shipwallet-container')) {
+            removeDebugElements();
+        }
     }
 
+    // Check if the widget iframe exists on load.
     function initialCheck() {
         const iframe = document.getElementById(WIDGET_IFRAME_ID);
         if (iframe) {
@@ -234,6 +267,7 @@
         }
     }
 
+    // Set up the observer on page load.
     window.addEventListener('load', function() {
         if (!observer) {
             observer = new MutationObserver(mutationCallback);
