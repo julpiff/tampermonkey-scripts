@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Ingrid Debug Button
 // @namespace    http://tampermonkey.net/
-// @version      1.6
+// @version      1.8
 // @description  Adds and manages a debug button and session ID display for Ingrid sessions, and removes them if the shipwallet-container is missing.
 // @author       You
 // @exclude      https://debug.ingrid.com/*
@@ -20,6 +20,7 @@
 
     // Global variables for session management.
     let currentSessionId = null;
+    let closedSessionId = null; // New variable to store closed session id.
     let iframeObserver = null;
     let observer = null;
 
@@ -27,7 +28,7 @@
     const DEBUG_BUTTON_ID = 'ingrid-debug-button';
     const WIDGET_IFRAME_ID = 'ingrid-widget-iframe';
 
-    // Remove debug elements and clear the stored session ID.
+    // Remove debug elements and record the closed session ID.
     function removeDebugElements() {
         const sessionIdDisplay = document.getElementById(SESSION_ID_DISPLAY_ID);
         if (sessionIdDisplay) {
@@ -37,6 +38,8 @@
         if (debugButton) {
             debugButton.remove();
         }
+        // Record the session that was closed.
+        closedSessionId = currentSessionId;
         currentSessionId = null;
     }
 
@@ -48,8 +51,13 @@
             removeDebugElements();
             return;
         }
+        // Do not update if the incoming session id is the same as the one that was closed.
+        if (closedSessionId === sessionId) return;
         // Only update if we have a new session id.
         if (currentSessionId === sessionId) return;
+
+        // Since we have a new session, clear the closedSessionId.
+        closedSessionId = null;
         currentSessionId = sessionId;
         createOrUpdateSessionIdDisplay(sessionId);
         createOrUpdateDebugButton(sessionId);
@@ -93,6 +101,8 @@
             debugButton.style.bottom = isMadSite ? '115px' : '45px';
             debugButton.style.right = '10px';
             debugButton.style.padding = '10px 15px';
+            // Extra right padding to accommodate the close icon.
+            debugButton.style.paddingRight = '25px';
             debugButton.style.backgroundColor = '#001F3F';
             debugButton.style.color = '#ffffff';
             debugButton.style.border = 'none';
@@ -100,6 +110,8 @@
             debugButton.style.cursor = 'pointer';
             debugButton.style.fontFamily = 'Arial, sans-serif';
             debugButton.style.zIndex = '10000';
+            // Ensure the button is positioned so its children can be absolutely positioned relative to it.
+            debugButton.style.overflow = 'visible';
             document.body.appendChild(debugButton);
         }
         // Remove any old event listeners by cloning the button.
@@ -108,6 +120,27 @@
         newDebugButton.addEventListener('click', () => {
             window.open(`https://debug.ingrid.com/session-history?id=${sessionId}`, '_blank');
         });
+        // Add close icon (small "X") to debug button.
+        let closeIcon = newDebugButton.querySelector('.debug-close-icon');
+        if (!closeIcon) {
+            closeIcon = document.createElement('span');
+            closeIcon.className = 'debug-close-icon';
+            closeIcon.textContent = '✖';
+            closeIcon.style.position = 'absolute';
+            closeIcon.style.top = '2px';
+            closeIcon.style.right = '2px';
+            closeIcon.style.cursor = 'pointer';
+            closeIcon.style.fontSize = '10px';
+            closeIcon.style.color = '#ffffff';
+            closeIcon.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
+            closeIcon.style.borderRadius = '50%';
+            closeIcon.style.padding = '2px';
+            closeIcon.addEventListener('click', function(e) {
+                e.stopPropagation(); // Prevent triggering the debug button's click event.
+                removeDebugElements();
+            });
+            newDebugButton.appendChild(closeIcon);
+        }
     }
 
     // Extract the first Ingrid code and update the session ID.
