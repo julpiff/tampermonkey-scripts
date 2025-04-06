@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Launchpad
 // @namespace    http://tampermonkey.net/
-// @version      2.1
+// @version      2.2
 // @description  Displays a sleek Launchpad-style modal with specific buttons, each triggering custom events.
 // @author       julpif
 // @match        https://mad.ingrid.com/*
