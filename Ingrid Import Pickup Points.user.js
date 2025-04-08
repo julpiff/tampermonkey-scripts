@@ -11,8 +11,8 @@
 // @grant        unsafeWindow
 // @connect      api.ingrid.com
 // @connect      api-stage.ingrid.com
-// @updateURL    https://raw.githubusercontent.com/julpiff/tampermonkey-scripts/refs/heads/main/Ingrid%20Import%20Pickup%20Points
-// @downloadURL  https://raw.githubusercontent.com/julpiff/tampermonkey-scripts/refs/heads/main/Ingrid%20Import%20Pickup%20Points
+// @updateURL    https://raw.githubusercontent.com/julpiff/tampermonkey-scripts/refs/heads/main/Ingrid%20Import%20Pickup%20Points.user.js
+// @downloadURL  https://raw.githubusercontent.com/julpiff/tampermonkey-scripts/refs/heads/main/Ingrid%20Import%20Pickup%20Points.user.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js
 // ==/UserScript==
