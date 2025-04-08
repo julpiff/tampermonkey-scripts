@@ -6,8 +6,8 @@
 // @author       julpif
 // @match        https://mad.ingrid.com/*
 // @match        https://mad-stage.ingrid.com/*
-// @updateURL    https://raw.githubusercontent.com/julpiff/tampermonkey-scripts/refs/heads/main/Stage%20environment%20color%20header
-// @downloadURL  https://raw.githubusercontent.com/julpiff/tampermonkey-scripts/refs/heads/main/Stage%20environment%20color%20header
+// @updateURL    https://raw.githubusercontent.com/julpiff/tampermonkey-scripts/refs/heads/main/Stage%20environment%20color%20header.user.js
+// @downloadURL  https://raw.githubusercontent.com/julpiff/tampermonkey-scripts/refs/heads/main/Stage%20environment%20color%20header.user.js
 // @grant        none
 // ==/UserScript==
 
