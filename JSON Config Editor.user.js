@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         JSON Config Editor
 // @namespace    http://tampermonkey.net/
-// @version      1.49
+// @version      1.50
 // @description  Enhanced JSON configuration editor
 // @author       julpif
 // @match        https://mad.ingrid.com/*
@@ -32,8 +32,8 @@
 // @resource     LintCSS https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/lint/lint.min.css
 // @resource     SearchDialogCSS https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/dialog/dialog.min.css
 // @run-at       document-end
-// @updateURL    https://raw.githubusercontent.com/julpiff/tampermonkey-scripts/refs/heads/main/JSON%20Config%20Editor
-// @downloadURL  https://raw.githubusercontent.com/julpiff/tampermonkey-scripts/refs/heads/main/JSON%20Config%20Editor
+// @updateURL    https://raw.githubusercontent.com/julpiff/tampermonkey-scripts/refs/heads/main/JSON%20Config%20Editor.user.js
+// @downloadURL  https://raw.githubusercontent.com/julpiff/tampermonkey-scripts/refs/heads/main/JSON%20Config%20Editor.user.js
 // ==/UserScript==
 
 (function() {
