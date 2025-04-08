@@ -1,15 +1,15 @@
 // ==UserScript==
 // @name         Address Form Configuration Editor
 // @namespace    http://tampermonkey.net/
-// @version      4.9
+// @version      5.0
 // @description  Frontend to configure address_form_configuration.json.
 // @author       julpif
 // @match        https://mad.ingrid.com/*
 // @match        https://mad-stage.ingrid.com/*
 // @grant        GM_addStyle
 // @run-at       document-idle
-// @updateURL    https://raw.githubusercontent.com/julpiff/tampermonkey-scripts/refs/heads/main/Address%20Form%20Configuration%20Editor
-// @downloadURL  https://raw.githubusercontent.com/julpiff/tampermonkey-scripts/refs/heads/main/Address%20Form%20Configuration%20Editor
+// @updateURL    https://raw.githubusercontent.com/julpiff/tampermonkey-scripts/refs/heads/main/Address%20Form%20Configuration%20Editor.user.js
+// @downloadURL  https://raw.githubusercontent.com/julpiff/tampermonkey-scripts/refs/heads/main/Address%20Form%20Configuration%20Editor.user.js
 // ==/UserScript==
 
 (function() {
