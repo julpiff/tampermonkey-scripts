@@ -1,14 +1,14 @@
 // ==UserScript==
 // @name         ICS Management
 // @namespace    http://tampermonkey.net/
-// @version      1.7
+// @version      1.8
 // @description  ICS Management
 // @author       julpif
 // @match        https://mad.ingrid.com/*
 // @match        https://mad-stage.ingrid.com/*
 // @grant        none
-// @updateURL    https://raw.githubusercontent.com/julpiff/tampermonkey-scripts/refs/heads/main/ICS%20Management
-// @downloadURL  https://raw.githubusercontent.com/julpiff/tampermonkey-scripts/refs/heads/main/ICS%20Management
+// @updateURL    https://raw.githubusercontent.com/julpiff/tampermonkey-scripts/refs/heads/main/ICS%20Management.user.js
+// @downloadURL  https://raw.githubusercontent.com/julpiff/tampermonkey-scripts/refs/heads/main/ICS%20Management.user.js
 // ==/UserScript==
 
 (function() {
