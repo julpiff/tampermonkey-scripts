@@ -8,8 +8,8 @@
 // @match        https://mad-stage.ingrid.com/*
 // @grant        none
 // @run-at       document-end
-// @updateURL    https://raw.githubusercontent.com/julpiff/tampermonkey-scripts/refs/heads/main/Carrier%20Add-Ons
-// @downloadURL  https://raw.githubusercontent.com/julpiff/tampermonkey-scripts/refs/heads/main/Carrier%20Add-Ons
+// @updateURL    https://raw.githubusercontent.com/julpiff/tampermonkey-scripts/refs/heads/main/Carrier%20Add-Ons.user.js
+// @downloadURL  https://raw.githubusercontent.com/julpiff/tampermonkey-scripts/refs/heads/main/Carrier%20Add-Ons.user.js
 // ==/UserScript==
 
 (function() {
