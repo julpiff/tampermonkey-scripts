@@ -7,8 +7,8 @@
 // @match        https://mad.ingrid.com/*
 // @match        https://mad-stage.ingrid.com/*
 // @grant        none
-// @updateURL    https://raw.githubusercontent.com/julpiff/tampermonkey-scripts/refs/heads/main/Delete%20ICS%20Location%20Set
-// @downloadURL  https://raw.githubusercontent.com/julpiff/tampermonkey-scripts/refs/heads/main/Delete%20ICS%20Location%20Set
+// @updateURL    https://raw.githubusercontent.com/julpiff/tampermonkey-scripts/refs/heads/main/Delete%20ICS%20Location%20Set.user.js
+// @downloadURL  https://raw.githubusercontent.com/julpiff/tampermonkey-scripts/refs/heads/main/Delete%20ICS%20Location%20Set.user.js
 // ==/UserScript==
 
 (function() {
