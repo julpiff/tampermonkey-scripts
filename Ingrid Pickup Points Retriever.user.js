@@ -11,8 +11,8 @@
 // @connect      api.ingrid.com
 // @connect      api-stage.ingrid.com
 // @run-at       document-end
-// @updateURL    https://raw.githubusercontent.com/julpiff/tampermonkey-scripts/refs/heads/main/Ingrid%20Pickup%20Points%20Retriever
-// @downloadURL  https://raw.githubusercontent.com/julpiff/tampermonkey-scripts/refs/heads/main/Ingrid%20Pickup%20Points%20Retriever
+// @updateURL    https://raw.githubusercontent.com/julpiff/tampermonkey-scripts/refs/heads/main/Ingrid%20Pickup%20Points%20Retriever.user.js
+// @downloadURL  https://raw.githubusercontent.com/julpiff/tampermonkey-scripts/refs/heads/main/Ingrid%20Pickup%20Points%20Retriever.user.js
 // ==/UserScript==
 
 (function() {
