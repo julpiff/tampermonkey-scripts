@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Custom Shipping Options Builder
 // @namespace    http://tampermonkey.net/
-// @version      5.3
+// @version      6.0
 // @description  Build and manage custom_shipping_methods via a user-friendly interface with API integration
 // @author       julpif
 // @match        https://mad.ingrid.com/*
