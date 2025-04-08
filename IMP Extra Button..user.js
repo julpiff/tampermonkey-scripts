@@ -1,14 +1,14 @@
 // ==UserScript==
 // @name         IMP Extra Button
 // @namespace    http://tampermonkey.net/
-// @version      1.1
+// @version      1.2
 // @description  Adds an "IMP Extra" button to trigger the Launchpad modal on specific URLs. The button is positioned at 90% of the window's width and appears behind any modals triggered by other scripts.
 // @author       julpif
 // @match        https://mad-stage.ingrid.com/*
 // @match        https://mad.ingrid.com/*
 // @grant        none
-// @updateURL    https://raw.githubusercontent.com/julpiff/tampermonkey-scripts/refs/heads/main/IMP%20Extra%20Button
-// @downloadURL  https://raw.githubusercontent.com/julpiff/tampermonkey-scripts/refs/heads/main/IMP%20Extra%20Button
+// @updateURL    https://raw.githubusercontent.com/julpiff/tampermonkey-scripts/refs/heads/main/IMP%20Extra%20Button.user.js
+// @downloadURL  https://raw.githubusercontent.com/julpiff/tampermonkey-scripts/refs/heads/main/IMP%20Extra%20Button.user.js
 // ==/UserScript==
 
 (function() {
