@@ -6,8 +6,8 @@
 // @author       julpif
 // @match        https://mad.ingrid.com/*
 // @match        https://mad-stage.ingrid.com/*
-// @updateURL    https://raw.githubusercontent.com/julpiff/tampermonkey-scripts/refs/heads/main/Add%20ICS%20Location%20Set
-// @downloadURL  https://raw.githubusercontent.com/julpiff/tampermonkey-scripts/refs/heads/main/Add%20ICS%20Location%20Set
+// @updateURL    https://raw.githubusercontent.com/julpiff/tampermonkey-scripts/refs/heads/main/Add%20ICS%20Location%20Set.user.js
+// @downloadURL  https://raw.githubusercontent.com/julpiff/tampermonkey-scripts/refs/heads/main/Add%20ICS%20Location%20Set.user.js
 // @grant        none
 // ==/UserScript==
 
