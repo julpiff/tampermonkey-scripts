@@ -1,14 +1,14 @@
 // ==UserScript==
 // @name         Ingrid Debug Button
 // @namespace    http://tampermonkey.net/
-// @version      1.8
+// @version      1.9
 // @description  Adds and manages a debug button and session ID display for Ingrid sessions, and removes them if the shipwallet-container is missing.
 // @author       You
 // @exclude      https://debug.ingrid.com/*
 // @match        *://*/*
 // @grant        none
-// @updateURL    https://raw.githubusercontent.com/julpiff/tampermonkey-scripts/refs/heads/main/Ingrid%20Debug%20Button
-// @downloadURL  https://raw.githubusercontent.com/julpiff/tampermonkey-scripts/refs/heads/main/Ingrid%20Debug%20Button
+// @updateURL    https://raw.githubusercontent.com/julpiff/tampermonkey-scripts/refs/heads/main/Ingrid%20Debug%20Button.user.js
+// @downloadURL  https://raw.githubusercontent.com/julpiff/tampermonkey-scripts/refs/heads/main/Ingrid%20Debug%20Button.user.js
 // ==/UserScript==
 
 (function() {
