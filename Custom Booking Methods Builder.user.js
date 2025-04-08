@@ -8,8 +8,8 @@
 // @match        https://mad-stage.ingrid.com/*
 // @grant        unsafeWindow
 // @run-at       document-idle
-// @updateURL    https://raw.githubusercontent.com/julpiff/tampermonkey-scripts/refs/heads/main/Custom%20Booking%20Methods%20Builder
-// @downloadURL  https://raw.githubusercontent.com/julpiff/tampermonkey-scripts/refs/heads/main/Custom%20Booking%20Methods%20Builder
+// @updateURL    https://raw.githubusercontent.com/julpiff/tampermonkey-scripts/refs/heads/main/Custom%20Booking%20Methods%20Builder.user.js
+// @downloadURL  https://raw.githubusercontent.com/julpiff/tampermonkey-scripts/refs/heads/main/Custom%20Booking%20Methods%20Builder.user.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js
 // ==/UserScript==
 
