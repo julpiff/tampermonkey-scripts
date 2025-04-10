@@ -8,6 +8,7 @@
 // @match        https://mad-stage.ingrid.com/*
 // @grant        GM_xmlhttpRequest
 // @grant        GM_info
+// @connect      script.googleusercontent.com
 // @connect      script.google.com
 // @updateURL    https://raw.githubusercontent.com/julpiff/tampermonkey-scripts/refs/heads/main/Launchpad.user.js
 // @downloadURL  https://raw.githubusercontent.com/julpiff/tampermonkey-scripts/refs/heads/main/Launchpad.user.js
