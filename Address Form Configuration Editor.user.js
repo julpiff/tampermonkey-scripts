@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Address Form Configuration Editor
 // @namespace    http://tampermonkey.net/
-// @version      5.0
+// @version      5.1
 // @description  Frontend to configure address_form_configuration.json.
 // @author       julpif
 // @match        https://mad.ingrid.com/*
