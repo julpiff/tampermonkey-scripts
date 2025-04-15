@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Ingrid Pickup Points Retriever
 // @namespace    http://yourdomain.com/
-// @version      4.7
+// @version      4.8
 // @description  Retrieve and display pickup points from Ingrid API with delete functionality in a beautifully styled frontend triggered via a bookmarklet. Broader search applied.
 // @match        https://mad.ingrid.com/*
 // @match        https://mad-stage.ingrid.com/*
