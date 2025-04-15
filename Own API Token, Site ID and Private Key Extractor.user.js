@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Own API Token, Site ID and Private Key Extractor
 // @namespace    http://tampermonkey.net/
-// @version      1.8
+// @version      1.9
 // @description  Dynamically extracts Bearer token and Site ID from API calls, fetches the private key upon updates, encodes it in Base64, logs them, and stores them in global variables
 // @author       julpif
 // @match        https://mad.ingrid.com/*
