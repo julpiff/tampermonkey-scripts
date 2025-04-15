@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Add ICS Location Set
 // @namespace    http://tampermonkey.net/
-// @version      1.0
+// @version      1.1
 // @description  Add ICS Location Set functionality triggered by ICS Management Interface
 // @author       julpif
 // @match        https://mad.ingrid.com/*
