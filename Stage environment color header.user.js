@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Stage environment color header
 // @namespace    http://tampermonkey.net/
-// @version      1.6
+// @version      1.7
 // @description  Style the header and primary button on the staging environment
 // @author       julpif
 // @match        https://mad.ingrid.com/*
