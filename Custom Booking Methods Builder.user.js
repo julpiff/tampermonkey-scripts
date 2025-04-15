@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Custom Booking Methods Builder
 // @namespace    http://tampermonkey.net/
-// @version      1.2
+// @version      1.3
 // @description  Build and manage custom_booking_methods via a user-friendly interface with API integration
 // @author       julpif
 // @match        https://mad.ingrid.com/*
