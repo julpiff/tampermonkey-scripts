@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Ingrid Import Pickup Points
 // @namespace    http://tampermonkey.net/
-// @version      2.5
+// @version      2.6
 // @description  Import pickup points from XLSX with an enhanced and user-friendly frontend, triggered via a bookmarklet
 // @author       julpif
 // @match        *://mad-stage.ingrid.com/*
