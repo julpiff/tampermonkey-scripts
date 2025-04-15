@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Carrier Add-Ons
 // @namespace    http://tampermonkey.net/
-// @version      1.0
+// @version      1.1
 // @description  Displays carrier add-ons in a modal.
 // @author       julpif
 // @match        https://mad.ingrid.com/*
