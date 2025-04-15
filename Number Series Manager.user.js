@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Number Series Manager
 // @namespace    http://tampermonkey.net/
-// @version      1.2
+// @version      1.3
 // @description  Display and manage shipping methods with number series, enhanced with UI/UX features and API integration.
 // @author       julpif
 // @match        https://mad.ingrid.com/*
