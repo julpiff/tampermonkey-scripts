@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Launchpad
 // @namespace    http://tampermonkey.net/
-// @version      3.0
-// @description  Displays a sleek Launchpad-style modal with specific buttons, each triggering custom events.
+// @version      3.1 // Increment version
+// @description  Displays a sleek Launchpad-style modal with specific buttons, each triggering custom events, and includes a tracking notice.
 // @author       julpif
 // @match        https://mad.ingrid.com/*
 // @match        https://mad-stage.ingrid.com/*
@@ -20,11 +20,8 @@
     // --- START: Usage Tracking ---
     const trackingWebAppUrl = 'https://script.google.com/a/macros/ingrid.com/s/AKfycbysOaMKrLW4G7ZtwgsBtF_xEUr19gsJjN_Pewp9aFVH4Z2jDdJwBWDECuUabYADO8zpXA/exec';
 
-    // Function to send tracking data when a button is clicked
     function sendTrackingPing(appName) {
         if (!trackingWebAppUrl || trackingWebAppUrl.includes('YOUR_WEB_APP_URL_HERE')) {
-            // Avoid logging errors if the URL isn't properly set,
-            // though it should be correct now.
             console.error('Launchpad Tracking: Invalid Web App URL configured.');
             return;
         }
@@ -32,27 +29,17 @@
         const payload = {
             scriptVersion: GM_info.script.version || 'Unknown',
             userAgent: navigator.userAgent || 'Unknown',
-            clickedApp: appName || 'Unknown' // Include the name of the clicked app
+            clickedApp: appName || 'Unknown'
         };
-
-        // Optional: Log for debugging purposes
-        // console.log('Launchpad Tracking: Sending ping for app:', appName, payload);
 
         GM_xmlhttpRequest({
             method: 'POST',
             url: trackingWebAppUrl,
             data: JSON.stringify(payload),
-            headers: {
-                'Content-Type': 'application/json'
-                // Note: No 'Authorization' header needed for Apps Script deployed with "Anyone" access
-            },
-            timeout: 15000, // 15 seconds timeout
-            onload: function(response) {
-                // Optional: Log success only if needed for debugging
-                // console.log('Launchpad Tracking: Ping successful for', appName, response.status);
-            },
+            headers: { 'Content-Type': 'application/json' },
+            timeout: 15000,
+            onload: function(response) { /* Optional success log */ },
             onerror: function(response) {
-                // Log errors if the request fails (e.g., network issue, Apps Script error, incorrect deployment)
                 console.error('Launchpad Tracking: Ping error for', appName, response.status, response.statusText, response.responseText);
             },
             ontimeout: function() {
@@ -84,7 +71,7 @@
             injectFontAwesome();
         }
 
-        // Create overlay with darker blur effect and prevent horizontal scroll
+        // Create overlay
         const overlay = document.createElement('div');
         overlay.id = 'sl-launchpad-modal-overlay';
         Object.assign(overlay.style, {
@@ -95,7 +82,7 @@
             overflowX: 'hidden'
         });
 
-        // Create modal container with navy blue background
+        // Create modal container
         const modal = document.createElement('div');
         Object.assign(modal.style, {
             padding: '20px', borderRadius: '20px', textAlign: 'center',
@@ -126,11 +113,8 @@
         apps.forEach((app, index) => {
             const appButton = document.createElement('button');
             appButton.className = 'sl-app-button';
-            appButton.setAttribute('aria-label', app.name); // Accessibility
-
-            // Ensure the label is below the icon
+            appButton.setAttribute('aria-label', app.name);
             appButton.innerHTML = `<span class="sl-app-icon">${app.icon}</span><span class="sl-app-label">${app.name}</span>`;
-
             Object.assign(appButton.style, {
                 width: '125px', height: '125px', background: '#16213e', border: 'none',
                 borderRadius: '15px', display: 'flex', flexDirection: 'column',
@@ -139,42 +123,51 @@
                 opacity: '0', transform: 'scale(0.5)', animation: `sl-fadeInScale 0.2s forwards`,
                 animationDelay: `${index * 0.1}s`, pointerEvents: 'auto'
             });
-
             // Hover effects
             appButton.addEventListener('mouseover', () => {
                 appButton.style.transform = 'scale(1.1)';
                 appButton.style.boxShadow = '0 8px 20px rgba(0,0,0,0.3)';
-                appButton.style.background = '#121a30'; // Slightly lighter on hover
+                appButton.style.background = '#121a30';
             });
             appButton.addEventListener('mouseout', () => {
                 appButton.style.transform = 'scale(1)';
                 appButton.style.boxShadow = 'none';
-                appButton.style.background = '#16213e'; // Original color
+                appButton.style.background = '#16213e';
             });
-
             // Button actions
             appButton.addEventListener('click', () => {
-                // --- >>> CALL TRACKING PING HERE <<< ---
-                sendTrackingPing(app.name); // Pass the name of the clicked app
-
-                // Trigger the original event
-                window.dispatchEvent(new Event(app.triggerEvent));
-                removeModal(); // Optionally close the modal after triggering
+                sendTrackingPing(app.name); // Send tracking ping
+                window.dispatchEvent(new Event(app.triggerEvent)); // Trigger original event
+                removeModal(); // Optionally close the modal
             });
-
             grid.appendChild(appButton);
         });
 
-        modal.appendChild(grid);
-        overlay.appendChild(modal);
-        document.body.appendChild(overlay);
+        modal.appendChild(grid); // Add the grid to the modal
+
+        // --- START: Add Tracking Disclaimer ---
+        const trackingDisclaimer = document.createElement('p');
+        trackingDisclaimer.id = 'sl-tracking-disclaimer';
+        trackingDisclaimer.textContent = 'Usage of these tools is tracked anonymously for improvement purposes.';
+        Object.assign(trackingDisclaimer.style, {
+            fontSize: '12px',
+            color: '#ccc', // Light grey color for less prominence
+            marginTop: '20px', // Add some space above the text
+            marginBottom: '0', // Remove default bottom margin if needed
+            textAlign: 'center'
+        });
+        modal.appendChild(trackingDisclaimer); // Add the disclaimer below the grid
+        // --- END: Add Tracking Disclaimer ---
+
+        overlay.appendChild(modal); // Add the modal to the overlay
+        document.body.appendChild(overlay); // Add the overlay to the page
 
         // Fade in overlay
         setTimeout(() => {
             overlay.style.opacity = '1';
         }, 10);
 
-        // Close modal when clicking outside or pressing Escape
+        // Close modal listeners
         overlay.addEventListener('click', function(e) {
             if (e.target === overlay) removeModal();
         });
@@ -207,18 +200,22 @@
         to { transform: scale(1); opacity: 1; }
     }
     .sl-app-icon {
-        font-size: 32px; /* Adjusted for larger buttons */
-        margin-bottom: 8px; /* Increased margin for better spacing */
+        font-size: 32px;
+        margin-bottom: 8px;
         line-height: 1;
-        color: #fff; /* White color for contrast against dark button background */
+        color: #fff;
     }
     .sl-app-label {
-        font-size: 14px; /* Increased font size for better readability */
-        color: #fff; /* White color for contrast against dark button background */
-        white-space: normal; /* Allow text to wrap if necessary */
+        font-size: 14px;
+        color: #fff;
+        white-space: normal;
     }
     .sl-app-button:focus {
         outline: none;
+    }
+    /* Optional: Style for the disclaimer if needed */
+    #sl-tracking-disclaimer {
+        /* Styles are currently inline, but could be moved here */
     }
     /* Prevent horizontal scroll on body when modal is open */
     body.modal-open {
