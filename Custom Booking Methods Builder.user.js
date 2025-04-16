@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Custom Booking Methods Builder
 // @namespace    http://tampermonkey.net/
-// @version      1.3
+// @version      1.4
 // @description  Build and manage custom_booking_methods via a user-friendly interface with API integration
 // @author       julpif
 // @match        https://mad.ingrid.com/*
@@ -332,6 +332,54 @@ function populateBothShippingMethodsDropdowns(bookingSelectElement, returnSelect
     });
 }
 
+         /**
+     * Creates a UI row for selecting an ID type and entering its value.
+     * @param {string} [initialType=''] - The initial type to select in the dropdown.
+     * @param {string} [initialValue=''] - The initial value to put in the input field.
+     * @returns {HTMLElement} - The created div element for the row.
+     */
+    function createIdPairRow(initialType = '', initialValue = '') {
+        const rowDiv = createElement('div', { className: 'cbm-id-pair-row', style: 'display: flex; gap: 10px; align-items: center; margin-bottom: 8px; border-left: 3px solid #eee; padding-left: 8px;' }); // Changed border color
+
+        // Type Dropdown
+        const typeLabel = createElement('label', { style: 'margin-bottom: 0; flex-shrink: 0;' }, 'Type:');
+        const idTypes = ['ein', 'eori', 'hmrc', 'ioss', 'pan', 'pccc', 'ssn', 'tin', 'ukims', 'vat', 'voec'];
+        const typeSelect = createElement('select', { className: 'cbm-id-type-select', style: 'flex-grow: 1; min-width: 80px;' },
+            createElement('option', { value: '', selected: !initialType, disabled: true }, 'Select Type'),
+            ...idTypes.map(type => createElement('option', { value: type, selected: type === initialType }, type.toUpperCase()))
+        );
+        typeSelect.addEventListener('change', () => typeSelect.classList.remove('error')); // Clear error on change
+
+        // Value Input
+        const valueLabel = createElement('label', { style: 'margin-bottom: 0; flex-shrink: 0;' }, 'Value:');
+        const valueInput = createElement('input', {
+            type: 'text',
+            className: 'cbm-id-value-input',
+            placeholder: 'Enter ID Value',
+            value: initialValue,
+            style: 'flex-grow: 2;'
+        });
+        valueInput.addEventListener('input', () => valueInput.classList.remove('error')); // Clear error on input
+
+        // Remove Button
+        const removeBtn = createElement('button', {
+            className: 'cbm-button danger cbm-remove-id-pair-btn',
+            innerHTML: '<i class="fas fa-times"></i>', // Just the icon for space
+            title: 'Remove ID', // Tooltip
+            style: 'padding: 4px 8px; flex-shrink: 0; line-height: 1;' // Smaller padding & adjust line-height
+        });
+        removeBtn.addEventListener('click', () => {
+            rowDiv.remove(); // Remove this specific row
+        });
+
+        rowDiv.appendChild(typeLabel);
+        rowDiv.appendChild(typeSelect);
+        rowDiv.appendChild(valueLabel);
+        rowDiv.appendChild(valueInput);
+        rowDiv.appendChild(removeBtn);
+
+        return rowDiv;
+    }
 
     /* ------------------- Inject CSS Styles ------------------- */
     const injectCSS = () => {
@@ -885,8 +933,8 @@ function populateBothShippingMethodsDropdowns(bookingSelectElement, returnSelect
         { value: 'set_gcd_sold_to', label: 'Set GCD Sold To' }, // same format as set_custom_address
         { value: 'set_gcd_incoterms', label: 'Set GCD Incoterms' }, // single string param
         { value: 'set_gcd_place_of_incoterms', label: 'Set GCD Place of Incoterms' }, // single string param
-        { value: 'set_gcd_seller_id_numbers', label: 'Set GCD Seller ID Numbers' }, // Two fields: VAT/EORI
-        { value: 'set_gcd_buyer_id_numbers', label: 'Set GCD Buyer ID Numbers' }, // Dropdown then fields
+        { value: 'set_gcd_seller_id_numbers', label: 'Set GCD Seller ID Numbers' },
+        { value: 'set_gcd_buyer_id_numbers', label: 'Set GCD Buyer ID Numbers' },
         { value: 'use_gcd_unit_alternative_value', label: 'Use GCD Unit Alternative Value' }, // no parameters now
         { value: 'use_line_items_currency_as_gcd_currency', label: 'Use Line Items Currency As GCD Currency' }, // no params
         { value: 'use_addr_as_gcd_sold_to', label: 'Use Addr as GCD Sold To' }, // dropdown param
@@ -980,239 +1028,213 @@ function createActionForm(availableActions, actionData = {}) {
 }
 
 function addActionParametersUI(selectedAction, container) {
-    // This function sets up the UI fields when an action is selected
-    // Adjusted to incorporate the "address" vs "regular parameter" logic for add_meta and add_default_meta
+        // This function sets up the UI fields when an action is selected
 
-    if (selectedAction === 'add_addon_for_carrier') {
-        const paramInput1 = createElement('input', {
-            type: 'text',
-            className: 'cbm-action-value-1',
-            placeholder: 'Enter first parameter'
-        });
-        const paramInput2 = createElement('input', {
-            type: 'text',
-            className: 'cbm-action-value-2',
-            placeholder: 'Enter second parameter'
-        });
-        container.appendChild(paramInput1);
-        container.appendChild(paramInput2);
+        // --- Clear container first ---
+        container.innerHTML = '';
 
-    } else if (selectedAction === 'set_custom_address') {
-        addCustomAddressParameters(container, true); // Dropdown visible
+        if (selectedAction === 'add_addon_for_carrier') {
+            const paramInput1 = createElement('input', {
+                type: 'text',
+                className: 'cbm-action-value-1',
+                placeholder: 'Enter first parameter'
+            });
+            const paramInput2 = createElement('input', {
+                type: 'text',
+                className: 'cbm-action-value-2',
+                placeholder: 'Enter second parameter'
+            });
+            container.appendChild(paramInput1);
+            container.appendChild(paramInput2);
 
-    } else if (selectedAction === 'add_meta' || selectedAction === 'add_default_meta') {
-        // Add extra dropdown for "Regular Parameter" and "Address"
-        const extraDropdown = createElement('select', { className: 'cbm-extra-dropdown' },
-            createElement('option', { value: 'regular', selected: true }, 'Regular Parameter'),
-            createElement('option', { value: 'address' }, 'Address')
-        );
-        container.appendChild(extraDropdown);
+        } else if (selectedAction === 'set_custom_address') {
+            addCustomAddressParameters(container, true); // Dropdown visible
 
-        const paramContainer = createElement('div', { className: 'cbm-meta-parameters' });
+        } else if (selectedAction === 'add_meta' || selectedAction === 'add_default_meta') {
+            // Add extra dropdown for "Regular Parameter" and "Address"
+            const extraDropdown = createElement('select', { className: 'cbm-extra-dropdown' },
+                createElement('option', { value: 'regular', selected: true }, 'Regular Parameter'),
+                createElement('option', { value: 'address' }, 'Address')
+            );
+            container.appendChild(extraDropdown);
 
-        // Initial state: Regular Parameter (two fields)
-        const paramInput1 = createElement('input', {
-            type: 'text',
-            className: 'cbm-action-value-1',
-            placeholder: 'Enter field name'
-        });
-        const paramInput2 = createElement('input', {
-            type: 'text',
-            className: 'cbm-action-value-2',
-            placeholder: 'Enter field value'
-        });
-        paramContainer.appendChild(paramInput1);
-        paramContainer.appendChild(paramInput2);
-        container.appendChild(paramContainer);
+            const paramContainer = createElement('div', { className: 'cbm-meta-parameters' });
 
-        // Event listener for dropdown change
-        extraDropdown.addEventListener('change', (e) => {
-            const selection = e.target.value;
-            paramContainer.innerHTML = '';
-            if (selection === 'regular') {
-                // Show two parameter fields
-                const regParamInput1 = createElement('input', {
-                    type: 'text',
-                    className: 'cbm-action-value-1',
-                    placeholder: 'Enter field name'
-                });
-                const regParamInput2 = createElement('input', {
-                    type: 'text',
-                    className: 'cbm-action-value-2',
-                    placeholder: 'Enter field value'
-                });
-                paramContainer.appendChild(regParamInput1);
-                paramContainer.appendChild(regParamInput2);
-            } else if (selection === 'address') {
-                // Show first param + address block
-                // First param field:
-                const addressFirstParam = createElement('input', {
-                    type: 'text',
-                    className: 'cbm-action-value-1',
-                    placeholder: 'Enter first parameter'
-                });
-                paramContainer.appendChild(addressFirstParam);
-                // Add address parameters
-                addCustomAddressParameters(paramContainer, false);
-            }
-        });
+            // Initial state: Regular Parameter (two fields)
+            const paramInput1 = createElement('input', {
+                type: 'text',
+                className: 'cbm-action-value-1',
+                placeholder: 'Enter field name'
+            });
+            const paramInput2 = createElement('input', {
+                type: 'text',
+                className: 'cbm-action-value-2',
+                placeholder: 'Enter field value'
+            });
+            paramContainer.appendChild(paramInput1);
+            paramContainer.appendChild(paramInput2);
+            container.appendChild(paramContainer);
 
-    } else if (selectedAction === 'set_custom_address_company_name') {
-        // First parameter: dropdown for address key
-        const paramSelect = createElement('select', { className: 'cbm-custom-address-select' },
-            createElement('option', { value: 'ADDRESS_FROM' }, 'ADDRESS_FROM'),
-            createElement('option', { value: 'ADDRESS_TO' }, 'ADDRESS_TO'),
-            createElement('option', { value: 'ADDRESS_RETURN' }, 'ADDRESS_RETURN'),
-            createElement('option', { value: 'ADDRESS_CUSTOMER' }, 'ADDRESS_CUSTOMER')
-        );
-        container.appendChild(paramSelect);
-        const paramInput = createElement('input', {
-            type: 'text',
-            className: 'cbm-action-value-2',
-            placeholder: 'Company Name'
-        });
-        container.appendChild(paramInput);
+            // Event listener for dropdown change
+            extraDropdown.addEventListener('change', (e) => {
+                const selection = e.target.value;
+                paramContainer.innerHTML = '';
+                if (selection === 'regular') {
+                    // Show two parameter fields
+                    const regParamInput1 = createElement('input', {
+                        type: 'text',
+                        className: 'cbm-action-value-1',
+                        placeholder: 'Enter field name'
+                    });
+                    const regParamInput2 = createElement('input', {
+                        type: 'text',
+                        className: 'cbm-action-value-2',
+                        placeholder: 'Enter field value'
+                    });
+                    paramContainer.appendChild(regParamInput1);
+                    paramContainer.appendChild(regParamInput2);
+                } else if (selection === 'address') {
+                    // Show first param + address block
+                    // First param field:
+                    const addressFirstParam = createElement('input', {
+                        type: 'text',
+                        className: 'cbm-action-value-1',
+                        placeholder: 'Enter first parameter'
+                    });
+                    paramContainer.appendChild(addressFirstParam);
+                    // Add address parameters
+                    addCustomAddressParameters(paramContainer, false);
+                }
+            });
 
-    } else if (selectedAction === 'remove_location_ref') {
-        // No parameters
+        } else if (selectedAction === 'set_custom_address_company_name') {
+            // First parameter: dropdown for address key
+            const paramSelect = createElement('select', { className: 'cbm-custom-address-select' },
+                createElement('option', { value: 'ADDRESS_FROM' }, 'ADDRESS_FROM'),
+                createElement('option', { value: 'ADDRESS_TO' }, 'ADDRESS_TO'),
+                createElement('option', { value: 'ADDRESS_RETURN' }, 'ADDRESS_RETURN'),
+                createElement('option', { value: 'ADDRESS_CUSTOMER' }, 'ADDRESS_CUSTOMER')
+            );
+            container.appendChild(paramSelect);
+            const paramInput = createElement('input', {
+                type: 'text',
+                className: 'cbm-action-value-2',
+                placeholder: 'Company Name'
+            });
+            container.appendChild(paramInput);
 
-    } else if (selectedAction === 'set_shipping_method') {
-        // single string param
-        const paramInput = createElement('input', {
-            type: 'text',
-            className: 'cbm-action-value-1',
-            placeholder: 'Enter shipping method'
-        });
-        container.appendChild(paramInput);
+        } else if (selectedAction === 'remove_location_ref') {
+            // No parameters
 
-    } else if (selectedAction === 'set_gcd_currency') {
-        // single string param
-        const paramInput = createElement('input', {
-            type: 'text',
-            className: 'cbm-action-value-1',
-            placeholder: 'Enter currency (e.g. GBP)'
-        });
-        container.appendChild(paramInput);
+        } else if (selectedAction === 'set_shipping_method') {
+            // single string param
+            const paramInput = createElement('input', {
+                type: 'text',
+                className: 'cbm-action-value-1',
+                placeholder: 'Enter shipping method'
+            });
+            container.appendChild(paramInput);
 
-    } else if (selectedAction === 'set_gcd_seller_address' || selectedAction === 'set_gcd_sold_to') {
-        // same as set_custom_address except no dropdown
-        addCustomAddressParameters(container, false);
+        } else if (selectedAction === 'set_gcd_currency') {
+            // single string param
+            const paramInput = createElement('input', {
+                type: 'text',
+                className: 'cbm-action-value-1',
+                placeholder: 'Enter currency (e.g. GBP)'
+            });
+            container.appendChild(paramInput);
 
-    } else if (selectedAction === 'set_gcd_incoterms') {
-        const paramInput = createElement('input', {
-            type: 'text',
-            className: 'cbm-action-value-1',
-            placeholder: 'Enter incoterms (e.g. DAP)'
-        });
-        container.appendChild(paramInput);
+        } else if (selectedAction === 'set_gcd_seller_address' || selectedAction === 'set_gcd_sold_to') {
+            // same as set_custom_address except no dropdown
+            addCustomAddressParameters(container, false);
 
-    } else if (selectedAction === 'set_gcd_place_of_incoterms') {
-        const paramInput = createElement('input', {
-            type: 'text',
-            className: 'cbm-action-value-1',
-            placeholder: 'Enter place of incoterms (City name)'
-        });
-        container.appendChild(paramInput);
+        } else if (selectedAction === 'set_gcd_incoterms') {
+            const paramInput = createElement('input', {
+                type: 'text',
+                className: 'cbm-action-value-1',
+                placeholder: 'Enter incoterms (e.g. DAP)'
+            });
+            container.appendChild(paramInput);
 
-    } else if (selectedAction === 'set_gcd_seller_id_numbers') {
-        // Two fields: VAT/EORI
-        container.appendChild(createElement('label', {}, 'VAT Number'));
-        const vatInput = createElement('input', {
-            type: 'text',
-            className: 'cbm-action-value-1',
-            placeholder: 'VAT Number'
-        });
-        container.appendChild(vatInput);
-        container.appendChild(createElement('label', {}, 'EORI Number'));
-        const eoriInput = createElement('input', {
-            type: 'text',
-            className: 'cbm-action-value-2',
-            placeholder: 'EORI Number'
-        });
-        container.appendChild(eoriInput);
+        } else if (selectedAction === 'set_gcd_place_of_incoterms') {
+            const paramInput = createElement('input', {
+                type: 'text',
+                className: 'cbm-action-value-1',
+                placeholder: 'Enter place of incoterms (City name)'
+            });
+            container.appendChild(paramInput);
 
-    } else if (selectedAction === 'set_gcd_buyer_id_numbers') {
-        // Dropdown with "VAT+EORI" or "EIN"
-        const dropdown = createElement('select', { className: 'cbm-buyer-id-type' },
-            createElement('option', { value: '' }, 'Select ID Type'),
-            createElement('option', { value: 'VAT+EORI' }, 'VAT + EORI'),
-            createElement('option', { value: 'EIN' }, 'EIN')
-        );
-        container.appendChild(dropdown);
-        const fieldsContainer = createElement('div', { className: 'cbm-buyer-id-fields' });
-        container.appendChild(fieldsContainer);
+        // --- REPLACED BLOCK for ID Numbers ---
+        } else if (selectedAction === 'set_gcd_seller_id_numbers' || selectedAction === 'set_gcd_buyer_id_numbers') {
+            // UI for adding multiple ID Type/Value pairs
+            // container is already cleared at the top
 
-        // On change populate fields
-        dropdown.addEventListener('change', () => {
-            fieldsContainer.innerHTML = '';
-            if (dropdown.value === 'VAT+EORI') {
-                fieldsContainer.appendChild(createElement('label', {}, 'VAT Number'));
-                const vatInput = createElement('input', {
-                    type: 'text',
-                    className: 'cbm-action-value-1',
-                    placeholder: 'VAT Number'
-                });
-                fieldsContainer.appendChild(vatInput);
-                fieldsContainer.appendChild(createElement('label', {}, 'EORI Number'));
-                const eoriInput = createElement('input', {
-                    type: 'text',
-                    className: 'cbm-action-value-2',
-                    placeholder: 'EORI Number'
-                });
-                fieldsContainer.appendChild(eoriInput);
-            } else if (dropdown.value === 'EIN') {
-                fieldsContainer.appendChild(createElement('label', {}, 'EIN'));
-                const einInput = createElement('input', {
-                    type: 'text',
-                    className: 'cbm-action-value-1',
-                    placeholder: 'EIN Number'
-                });
-                fieldsContainer.appendChild(einInput);
-            }
-        });
+            container.appendChild(createElement('label', {}, 'ID Numbers:')); // Add a label for the section
 
-    } else if (selectedAction === 'use_gcd_unit_alternative_value' ||
-               selectedAction === 'use_line_items_currency_as_gcd_currency' ||
-               selectedAction === 'use_customer_info_as_gcd_buyer_contact') {
-        // no parameters
+            // Container for the list of ID pairs
+            const listContainer = createElement('div', { className: 'cbm-id-list-container', style: 'margin-top: 5px; margin-bottom: 10px; max-height: 200px; overflow-y: auto; padding: 5px; background-color: #f8f9fa; border: 1px solid #dee2e6; border-radius: 4px;' }); // Added styling
+            container.appendChild(listContainer);
 
-    } else if (selectedAction === 'use_addr_as_gcd_sold_to') {
-        // Dropdown with ADDRESS types
-        const paramSelect = createElement('select', { className: 'cbm-custom-address-select' },
-            createElement('option', { value: 'ADDRESS_FROM' }, 'ADDRESS_FROM'),
-            createElement('option', { value: 'ADDRESS_TO' }, 'ADDRESS_TO'),
-            createElement('option', { value: 'ADDRESS_RETURN' }, 'ADDRESS_RETURN'),
-            createElement('option', { value: 'ADDRESS_CUSTOMER' }, 'ADDRESS_CUSTOMER')
-        );
-        container.appendChild(paramSelect);
+            // "Add ID" button
+            const addBtn = createElement('button', {
+                className: 'cbm-button secondary cbm-add-id-pair-btn',
+                innerHTML: '<i class="fas fa-plus"></i> Add ID Number'
+            });
+            addBtn.addEventListener('click', () => {
+                const newRow = createIdPairRow(); // Create an empty row using the helper
+                listContainer.appendChild(newRow);
+                newRow.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); // Scroll the new row into view
+            });
+            container.appendChild(addBtn);
 
-    } else if (selectedAction === 'set_gcd_buyer_contact') {
-        // Two fields: email, phone
-        container.appendChild(createElement('label', {}, 'email'));
-        const emailInput = createElement('input', {
-            type: 'text',
-            className: 'cbm-action-value-1',
-            placeholder: 'email'
-        });
-        container.appendChild(emailInput);
-        container.appendChild(createElement('label', {}, 'phone'));
-        const phoneInput = createElement('input', {
-            type: 'text',
-            className: 'cbm-action-value-2',
-            placeholder: 'phone'
-        });
-        container.appendChild(phoneInput);
+            // Optionally, add one empty row initially if you prefer
+            // listContainer.appendChild(createIdPairRow());
 
-    } else {
-        // default single param
-        const paramInput = createElement('input', {
-            type: 'text',
-            className: 'cbm-action-value-1',
-            placeholder: 'Enter parameter'
-        });
-        container.appendChild(paramInput);
+        // --- END REPLACED BLOCK for ID Numbers ---
+
+        } else if (selectedAction === 'use_gcd_unit_alternative_value' ||
+                   selectedAction === 'use_line_items_currency_as_gcd_currency' ||
+                   selectedAction === 'use_customer_info_as_gcd_buyer_contact') {
+            // no parameters
+
+        } else if (selectedAction === 'use_addr_as_gcd_sold_to') {
+            // Dropdown with ADDRESS types
+            const paramSelect = createElement('select', { className: 'cbm-custom-address-select' },
+                createElement('option', { value: 'ADDRESS_FROM' }, 'ADDRESS_FROM'),
+                createElement('option', { value: 'ADDRESS_TO' }, 'ADDRESS_TO'),
+                createElement('option', { value: 'ADDRESS_RETURN' }, 'ADDRESS_RETURN'),
+                createElement('option', { value: 'ADDRESS_CUSTOMER' }, 'ADDRESS_CUSTOMER')
+            );
+            container.appendChild(paramSelect);
+
+        } else if (selectedAction === 'set_gcd_buyer_contact') {
+            // Two fields: email, phone
+            container.appendChild(createElement('label', {}, 'Email')); // Changed label for clarity
+            const emailInput = createElement('input', {
+                type: 'text', // Consider type="email" for basic validation
+                className: 'cbm-action-value-1',
+                placeholder: 'Enter email address'
+            });
+            container.appendChild(emailInput);
+            container.appendChild(createElement('label', { style: 'margin-top: 5px;' }, 'Phone')); // Changed label for clarity
+            const phoneInput = createElement('input', {
+                type: 'text', // Consider type="tel"
+                className: 'cbm-action-value-2',
+                placeholder: 'Enter phone number'
+            });
+            container.appendChild(phoneInput);
+
+        } else {
+            // default single param for actions like add_addon, remove_addon etc.
+            const paramInput = createElement('input', {
+                type: 'text',
+                className: 'cbm-action-value-1',
+                placeholder: 'Enter parameter'
+            });
+            container.appendChild(paramInput);
+        }
     }
-}
+
 
 function addCustomAddressParameters(container, showDropdown = true, paramContainer = null) {
     if (showDropdown) {
@@ -1332,422 +1354,397 @@ function addCustomAddressParameters(container, showDropdown = true, paramContain
 }
 
 function populateActionParameters(actionSelect, actionValueRaw, actionParametersDiv) {
-    function safeParseJSON(str) {
-        try {
-            return JSON.parse(str);
-        } catch (e) {
-            console.error('Failed to parse JSON:', str, e);
-            return null;
-        }
-    }
 
-    function extractJSONString(raw) {
-        let jsonString = raw.trim();
-        if ((jsonString.startsWith('"') && jsonString.endsWith('"')) ||
-            (jsonString.startsWith("'") && jsonString.endsWith("'"))) {
-            jsonString = jsonString.slice(1, -1);
-        }
-        jsonString = jsonString.replace(/\\"/g, '"').replace(/\\'/g, "'");
-        return jsonString;
-    }
-
-// Construct the full value with parentheses around actionValueRaw
-const fullValue = `(${actionValueRaw})`;
-
-// Construct the full expression: actionSelect + the parameters
-const fullExpression = `${actionSelect}${fullValue}`;
-
-// Use the new parser directly
-const params = processParameters(fullExpression);
-
-// Now 'params' contains the fully processed parameters
-// For example, with add_meta('my_first_param', "{...address JSON...}")
-// params might be: ['my_first_param', '{"name":"Julien ...","address_lines":["..."] ...}']
-
-    // Address-based actions
-    if (actionSelect === 'set_custom_address' ||
-        actionSelect === 'set_gcd_seller_address' ||
-        actionSelect === 'set_gcd_sold_to') {
-
-        let addressJSON;
-        let addressType = '';
-
-        if (actionSelect === 'set_custom_address') {
-            // Two params: addressType, json
-            const firstParam = params[0].replace(/^['"]|['"]$/g, '');
-            let jsonString = actionValueRaw.substring(actionValueRaw.indexOf(',') + 1).trim();
-            jsonString = extractJSONString(jsonString);
-            addressJSON = safeParseJSON(jsonString);
-            addressType = firstParam;
-        } else {
-            // One param: json
-            let jsonString = extractJSONString(actionValueRaw);
-            addressJSON = safeParseJSON(jsonString);
-        }
-
-        if (!addressJSON) return;
-
-        actionParametersDiv.innerHTML = '';
-        const showDropdown = (actionSelect === 'set_custom_address');
-        addCustomAddressParameters(actionParametersDiv, showDropdown);
-
-        if (showDropdown) {
-            const paramSelect = actionParametersDiv.querySelector('.cbm-custom-address-select');
-            if (paramSelect) paramSelect.value = addressType;
-        }
-
-        const addressContainer = actionParametersDiv.querySelector('.cbm-custom-address-parameters');
-        if (!addressContainer) return;
-
-        addressContainer.querySelector('.cbm-custom-address-name').value = addressJSON.name || '';
-        addressContainer.querySelector('.cbm-custom-address-lines').value = Array.isArray(addressJSON.address_lines) ? addressJSON.address_lines.join(', ') : '';
-        addressContainer.querySelector('.cbm-custom-address-apartment-number').value = addressJSON.apartment_number || '';
-        addressContainer.querySelector('.cbm-custom-address-attn').value = addressJSON.attn || '';
-        addressContainer.querySelector('.cbm-custom-address-care-of').value = addressJSON.care_of || '';
-        addressContainer.querySelector('.cbm-custom-address-city').value = addressJSON.city || '';
-        addressContainer.querySelector('.cbm-custom-address-region').value = addressJSON.region || '';
-        addressContainer.querySelector('.cbm-custom-address-subregion').value = addressJSON.subregion || '';
-        addressContainer.querySelector('.cbm-custom-address-street').value = addressJSON.street || '';
-        addressContainer.querySelector('.cbm-custom-address-street-number').value = addressJSON.street_number || '';
-        addressContainer.querySelector('.cbm-custom-address-door-code').value = addressJSON.door_code || '';
-        addressContainer.querySelector('.cbm-custom-address-floor-number').value = addressJSON.floor_number || '';
-        addressContainer.querySelector('.cbm-custom-address-postal-code').value = addressJSON.postal_code || '';
-        addressContainer.querySelector('.cbm-custom-address-country').value = addressJSON.country || '';
-
-        const latInput = addressContainer.querySelector('.cbm-custom-address-lat');
-        const lngInput = addressContainer.querySelector('.cbm-custom-address-lng');
-        if (addressJSON.coordinates && typeof addressJSON.coordinates.lat === 'number' && typeof addressJSON.coordinates.lng === 'number') {
-            latInput.value = addressJSON.coordinates.lat;
-            lngInput.value = addressJSON.coordinates.lng;
-        } else {
-            latInput.value = '';
-            lngInput.value = '';
-        }
-
-    } else if (actionSelect === 'set_custom_address_company_name') {
-        actionParametersDiv.innerHTML = '';
-        // Two params: addressType, companyName
-        const firstParam = params[0].replace(/^['"]|['"]$/g, '');
-        const secondParam = params[1].replace(/^['"]|['"]$/g, '');
-
-        const container = createElement('div', { className: 'cbm-action-parameters' },
-            createElement('label', {}, 'Address Type'),
-            (function() {
-                const select = createElement('select', { className: 'cbm-custom-address-select' },
-                    createElement('option', { value: 'ADDRESS_FROM' }, 'ADDRESS_FROM'),
-                    createElement('option', { value: 'ADDRESS_TO' }, 'ADDRESS_TO'),
-                    createElement('option', { value: 'ADDRESS_RETURN' }, 'ADDRESS_RETURN'),
-                    createElement('option', { value: 'ADDRESS_CUSTOMER' }, 'ADDRESS_CUSTOMER')
-                );
-                select.value = firstParam;
-                return select;
-            })(),
-            createElement('label', {}, 'Company Name'),
-            createElement('input', { type: 'text', className: 'cbm-action-value-2', value: secondParam })
-        );
-        actionParametersDiv.appendChild(container);
-
-    } else if (actionSelect === 'remove_location_ref' ||
-               actionSelect === 'use_gcd_unit_alternative_value' ||
-               actionSelect === 'use_line_items_currency_as_gcd_currency' ||
-               actionSelect === 'use_customer_info_as_gcd_buyer_contact') {
-        actionParametersDiv.innerHTML = '';
-
-    } else if (actionSelect === 'use_addr_as_gcd_sold_to') {
-        // One param: addressType
-        actionParametersDiv.innerHTML = '';
-        const firstParam = params[0].replace(/^['"]|['"]$/g, '');
-        const container = createElement('div', { className: 'cbm-action-parameters' },
-            createElement('label', {}, 'Address Type'),
-            (function() {
-                const select = createElement('select', { className: 'cbm-custom-address-select' },
-                    createElement('option', { value: 'ADDRESS_FROM' }, 'ADDRESS_FROM'),
-                    createElement('option', { value: 'ADDRESS_TO' }, 'ADDRESS_TO'),
-                    createElement('option', { value: 'ADDRESS_RETURN' }, 'ADDRESS_RETURN'),
-                    createElement('option', { value: 'ADDRESS_CUSTOMER' }, 'ADDRESS_CUSTOMER')
-                );
-                select.value = firstParam;
-                return select;
-            })()
-        );
-        actionParametersDiv.appendChild(container);
-
-    } else if (actionSelect === 'set_gcd_buyer_contact') {
-        actionParametersDiv.innerHTML = '';
-        let jsonString = extractJSONString(actionValueRaw);
-        const contactData = safeParseJSON(jsonString);
-        const container = createElement('div', { className: 'cbm-action-parameters' },
-            createElement('label', {}, 'email'),
-            createElement('input', { type: 'text', className: 'cbm-action-value-1', value: contactData?.email || '' }),
-            createElement('label', {}, 'phone'),
-            createElement('input', { type: 'text', className: 'cbm-action-value-2', value: contactData?.phone || '' })
-        );
-        actionParametersDiv.appendChild(container);
-
-    } else if (actionSelect === 'set_gcd_seller_id_numbers') {
-        actionParametersDiv.innerHTML = '';
-        let jsonString = extractJSONString(actionValueRaw);
-        const idData = safeParseJSON(jsonString);
-        const container = createElement('div', { className: 'cbm-action-parameters' },
-            createElement('label', {}, 'VAT Number'),
-            createElement('input', { type: 'text', className: 'cbm-action-value-1', value: idData?.vat || '' }),
-            createElement('label', {}, 'EORI Number'),
-            createElement('input', { type: 'text', className: 'cbm-action-value-2', value: idData?.eori || '' })
-        );
-        actionParametersDiv.appendChild(container);
-
-    } else if (actionSelect === 'set_gcd_buyer_id_numbers') {
-        actionParametersDiv.innerHTML = '';
-        let jsonString = extractJSONString(actionValueRaw);
-        const idData = safeParseJSON(jsonString);
-        const container = createElement('div', { className: 'cbm-action-parameters' },
-            createElement('label', {}, 'Buyer ID Type'),
-            createElement('select', { className: 'cbm-buyer-id-type' },
-                createElement('option', { value: '' }, 'Select ID Type'),
-                createElement('option', { value: 'VAT+EORI' }, 'VAT + EORI'),
-                createElement('option', { value: 'EIN' }, 'EIN')
-            ),
-            createElement('div', { className: 'cbm-buyer-id-fields' })
-        );
-        actionParametersDiv.appendChild(container);
-
-        const dropdown = container.querySelector('.cbm-buyer-id-type');
-        const fieldsContainer = container.querySelector('.cbm-buyer-id-fields');
-
-        function showVATandEORI(vatVal, eoriVal) {
-            fieldsContainer.innerHTML = '';
-            fieldsContainer.appendChild(createElement('label', {}, 'VAT Number'));
-            fieldsContainer.appendChild(createElement('input', { type: 'text', className: 'cbm-action-value-1', value: vatVal || '' }));
-            fieldsContainer.appendChild(createElement('label', {}, 'EORI Number'));
-            fieldsContainer.appendChild(createElement('input', { type: 'text', className: 'cbm-action-value-2', value: eoriVal || '' }));
-        }
-
-        function showEIN(einVal) {
-            fieldsContainer.innerHTML = '';
-            fieldsContainer.appendChild(createElement('label', {}, 'EIN'));
-            fieldsContainer.appendChild(createElement('input', { type: 'text', className: 'cbm-action-value-1', value: einVal || '' }));
-        }
-
-        if (idData) {
-            if (idData.vat && idData.eori) {
-                dropdown.value = 'VAT+EORI';
-                showVATandEORI(idData.vat, idData.eori);
-            } else if (idData.ein) {
-                dropdown.value = 'EIN';
-                showEIN(idData.ein);
-            } else {
-                dropdown.value = '';
-                fieldsContainer.innerHTML = '';
+        // --- Helper Function: safeParseJSON (Ensure this is accessible) ---
+        function safeParseJSON(str) {
+            try {
+                let jsonString = str.trim();
+                // Remove outer quotes if they exist (handle single or double)
+                if ((jsonString.startsWith('"') && jsonString.endsWith('"')) ||
+                    (jsonString.startsWith("'") && jsonString.endsWith("'"))) {
+                    jsonString = jsonString.slice(1, -1);
+                }
+                // Unescape commonly escaped characters within the stringified JSON
+                jsonString = jsonString.replace(/\\"/g, '"')
+                                     .replace(/\\'/g, "'")
+                                     .replace(/\\\\/g, '\\'); // Handle double escapes
+                return JSON.parse(jsonString);
+            } catch (e) {
+                console.error('Failed to parse JSON:', str, e);
+                return null; // Return null on failure
             }
         }
+        // --- End Helper ---
 
-        dropdown.addEventListener('change', () => {
-            if (dropdown.value === 'VAT+EORI') {
-                showVATandEORI('', '');
-            } else if (dropdown.value === 'EIN') {
-                showEIN('');
+        // Use the reliable parameter extractor first
+        const fullExpression = `${actionSelect}(${actionValueRaw})`;
+        const params = processParameters(fullExpression); // Returns parameters without outer quotes
+
+        // --- Clear div before populating ---
+        actionParametersDiv.innerHTML = '';
+
+        // Address-based actions (Copied from previous answer - ensure addCustomAddressParameters exists)
+        if (actionSelect === 'set_custom_address' ||
+            actionSelect === 'set_gcd_seller_address' ||
+            actionSelect === 'set_gcd_sold_to') {
+
+            let addressJSON;
+            let addressType = '';
+
+            if (actionSelect === 'set_custom_address') {
+                // Two params: addressType, jsonString
+                if (params.length < 2) {
+                    console.error(`[CBM Builder] Error parsing ${actionSelect}: Expected 2 parameters, got ${params.length}. Raw: ${actionValueRaw}`);
+                    return; // Stop processing this action
+                }
+                addressType = params[0]; // First param is the type (e.g., ADDRESS_FROM)
+                let jsonString = params[1]; // Second param is the JSON string
+                addressJSON = safeParseJSON(jsonString); // Use safeParseJSON which handles internal quotes
             } else {
-                fieldsContainer.innerHTML = '';
+                // One param: jsonString
+                if (params.length < 1) {
+                    console.error(`[CBM Builder] Error parsing ${actionSelect}: Expected 1 parameter, got ${params.length}. Raw: ${actionValueRaw}`);
+                    return; // Stop processing this action
+                }
+                let jsonString = params[0]; // Single parameter is the JSON string
+                addressJSON = safeParseJSON(jsonString);
             }
-        });
 
-    } else if (actionSelect === 'add_addon_for_carrier') {
-        actionParametersDiv.innerHTML = '';
-        // Two parameters
-        const firstParam = params[0].replace(/^['"]|['"]$/g, '');
-        const secondParam = params[1].replace(/^['"]|['"]$/g, '');
-        const paramInput1 = createElement('input', {
-            type: 'text',
-            className: 'cbm-action-value-1',
-            value: firstParam
-        });
-        const paramInput2 = createElement('input', {
-            type: 'text',
-            className: 'cbm-action-value-2',
-            value: secondParam
-        });
-        actionParametersDiv.appendChild(paramInput1);
-        actionParametersDiv.appendChild(paramInput2);
+            if (!addressJSON) {
+                showNotification(`Failed to parse address JSON for ${actionSelect}. Check console.`, 'danger');
+                console.error(`[CBM Builder] Could not parse Address JSON from:`, params);
+                // Maybe add a raw text area for manual correction?
+                actionParametersDiv.appendChild(createElement('textarea', { style: 'width: 100%; height: 100px; border: 1px solid red;', value: params.join(', '), title:"Invalid Address JSON" }));
+                return; // Stop processing this action if JSON is invalid
+            }
 
-    } else if (actionSelect === 'set_shipping_method') {
-        actionParametersDiv.innerHTML = '';
-        const firstParam = params[0].replace(/^['"]|['"]$/g, '');
-        const paramInput = createElement('input', {
-            type: 'text',
-            className: 'cbm-action-value-1',
-            value: firstParam,
-            placeholder: 'Enter shipping method'
-        });
-        actionParametersDiv.appendChild(paramInput);
+            // Rebuild the UI elements for address
+            const showDropdown = (actionSelect === 'set_custom_address');
+            addCustomAddressParameters(actionParametersDiv, showDropdown); // This clears and rebuilds the address UI inside actionParametersDiv
 
-    } else if (actionSelect === 'set_gcd_currency') {
-        actionParametersDiv.innerHTML = '';
-        const firstParam = params[0].replace(/^['"]|['"]$/g, '');
-        const paramInput = createElement('input', {
-            type: 'text',
-            className: 'cbm-action-value-1',
-            value: firstParam,
-            placeholder: 'Enter currency (e.g. GBP)'
-        });
-        actionParametersDiv.appendChild(paramInput);
+            // Populate the rebuilt UI
+            if (showDropdown) {
+                const paramSelect = actionParametersDiv.querySelector('.cbm-custom-address-select');
+                if (paramSelect) paramSelect.value = addressType;
+            }
 
-    } else if (actionSelect === 'set_gcd_incoterms') {
-        actionParametersDiv.innerHTML = '';
-        const firstParam = params[0].replace(/^['"]|['"]$/g, '');
-        const paramInput = createElement('input', {
-            type: 'text',
-            className: 'cbm-action-value-1',
-            value: firstParam,
-            placeholder: 'Enter incoterms (e.g. DAP)'
-        });
-        actionParametersDiv.appendChild(paramInput);
+            // Find the container *within* the rebuilt structure
+            const addressContainer = actionParametersDiv.querySelector('.cbm-custom-address-parameters');
+            if (!addressContainer) {
+                console.error("[CBM Builder] Address parameter container not found after rebuild.");
+                return;
+            }
 
-    } else if (actionSelect === 'set_gcd_place_of_incoterms') {
-        actionParametersDiv.innerHTML = '';
-        const firstParam = params[0].replace(/^['"]|['"]$/g, '');
-        const paramInput = createElement('input', {
-            type: 'text',
-            className: 'cbm-action-value-1',
-            value: firstParam,
-            placeholder: 'Enter place of incoterms (City name)'
-        });
-        actionParametersDiv.appendChild(paramInput);
+            // Populate fields, checking for existence before setting value
+            const trySet = (selector, value) => {
+                const el = addressContainer.querySelector(selector);
+                if (el) el.value = value || ''; // Set to empty string if value is null/undefined
+            };
 
-    } else if (actionSelect === 'add_meta' || actionSelect === 'add_default_meta') {
-        // For add_meta and add_default_meta, we have either two regular parameters or one address block
-        // Example: add_meta('param1', 'param2') or add_meta('my_first_param', "{...address...}")
-        actionParametersDiv.innerHTML = '';
+            trySet('.cbm-custom-address-name', addressJSON.name);
+            trySet('.cbm-custom-address-lines', Array.isArray(addressJSON.address_lines) ? addressJSON.address_lines.join(', ') : '');
+            trySet('.cbm-custom-address-apartment-number', addressJSON.apartment_number);
+            trySet('.cbm-custom-address-attn', addressJSON.attn);
+            trySet('.cbm-custom-address-care-of', addressJSON.care_of);
+            trySet('.cbm-custom-address-city', addressJSON.city);
+            trySet('.cbm-custom-address-region', addressJSON.region);
+            trySet('.cbm-custom-address-subregion', addressJSON.subregion);
+            trySet('.cbm-custom-address-street', addressJSON.street);
+            trySet('.cbm-custom-address-street-number', addressJSON.street_number);
+            trySet('.cbm-custom-address-door-code', addressJSON.door_code);
+            trySet('.cbm-custom-address-floor-number', addressJSON.floor_number);
+            trySet('.cbm-custom-address-postal-code', addressJSON.postal_code);
+            trySet('.cbm-custom-address-country', addressJSON.country);
 
-        // Extract parameters:
-        const firstParam = params[0].replace(/^['"]|['"]$/g, '');
-        let secondParam = '';
-        if (params.length > 1) {
-            // second parameter could be a normal string or a JSON address block
-            secondParam = params[1];
-        }
+            const latInput = addressContainer.querySelector('.cbm-custom-address-lat');
+            const lngInput = addressContainer.querySelector('.cbm-custom-address-lng');
+            if (addressJSON.coordinates && typeof addressJSON.coordinates.lat === 'number' && typeof addressJSON.coordinates.lng === 'number') {
+                if (latInput) latInput.value = addressJSON.coordinates.lat;
+                if (lngInput) lngInput.value = addressJSON.coordinates.lng;
+            } else {
+                if (latInput) latInput.value = '';
+                if (lngInput) lngInput.value = '';
+            }
 
-        // Check if secondParam contains address_lines (simple check)
-        let isAddressMode = false;
-        if (secondParam && secondParam.toLowerCase().includes('address_lines')) {
-            isAddressMode = true;
-        }
+            // Make address fields visible if they contain data
+            const toggleBtn = actionParametersDiv.querySelector('.cbm-address-toggle-btn');
+            if (Object.keys(addressJSON).length > 0 && addressContainer && toggleBtn && addressContainer.style.display === 'none') {
+                addressContainer.style.display = 'block';
+                toggleBtn.textContent = 'Collapse Address Fields';
+            }
 
-        // Create dropdown
-        const extraDropdown = createElement('select', { className: 'cbm-extra-dropdown' },
-            createElement('option', { value: 'regular', selected: !isAddressMode }, 'Regular Parameter'),
-            createElement('option', { value: 'address', selected: isAddressMode }, 'Address')
-        );
-        actionParametersDiv.appendChild(extraDropdown);
+        } else if (actionSelect === 'set_custom_address_company_name') {
+            if (params.length < 2) {
+                console.error(`[CBM Builder] Error parsing ${actionSelect}: Expected 2 parameters, got ${params.length}. Raw: ${actionValueRaw}`);
+                return;
+            }
+            const addressType = params[0];
+            const companyName = params[1];
 
-        const paramContainer = createElement('div', { className: 'cbm-meta-parameters' });
-        actionParametersDiv.appendChild(paramContainer);
+            // Rebuild UI
+            addActionParametersUI(actionSelect, actionParametersDiv);
 
-        if (isAddressMode) {
-            // Address mode: first param + address block
-            const addressFirstParamInput = createElement('input', {
-                type: 'text',
-                className: 'cbm-action-value-1',
-                placeholder: 'Enter first parameter',
-                value: firstParam
-            });
-            paramContainer.appendChild(addressFirstParamInput);
+            // Populate
+            const selectEl = actionParametersDiv.querySelector('.cbm-custom-address-select');
+            const inputEl = actionParametersDiv.querySelector('.cbm-action-value-2');
+            if (selectEl) selectEl.value = addressType;
+            if (inputEl) inputEl.value = companyName;
 
-            // Parse JSON from secondParam
-            let jsonString = extractJSONString(secondParam);
-            const addressJSON = safeParseJSON(jsonString);
+        } else if (actionSelect === 'remove_location_ref' ||
+                   actionSelect === 'use_gcd_unit_alternative_value' ||
+                   actionSelect === 'use_line_items_currency_as_gcd_currency' ||
+                   actionSelect === 'use_customer_info_as_gcd_buyer_contact') {
+            // No parameters, UI is already empty or handled by addActionParametersUI
 
-            // Add address parameters
-            addCustomAddressParameters(paramContainer, false);
-            const addressContainer = paramContainer.querySelector('.cbm-custom-address-parameters');
-            if (addressContainer && addressJSON) {
-                addressContainer.querySelector('.cbm-custom-address-name').value = addressJSON.name || '';
-                addressContainer.querySelector('.cbm-custom-address-lines').value = Array.isArray(addressJSON.address_lines) ? addressJSON.address_lines.join(', ') : '';
-                addressContainer.querySelector('.cbm-custom-address-apartment-number').value = addressJSON.apartment_number || '';
-                addressContainer.querySelector('.cbm-custom-address-attn').value = addressJSON.attn || '';
-                addressContainer.querySelector('.cbm-custom-address-care-of').value = addressJSON.care_of || '';
-                addressContainer.querySelector('.cbm-custom-address-city').value = addressJSON.city || '';
-                addressContainer.querySelector('.cbm-custom-address-region').value = addressJSON.region || '';
-                addressContainer.querySelector('.cbm-custom-address-subregion').value = addressJSON.subregion || '';
-                addressContainer.querySelector('.cbm-custom-address-street').value = addressJSON.street || '';
-                addressContainer.querySelector('.cbm-custom-address-street-number').value = addressJSON.street_number || '';
-                addressContainer.querySelector('.cbm-custom-address-door-code').value = addressJSON.door_code || '';
-                addressContainer.querySelector('.cbm-custom-address-floor-number').value = addressJSON.floor_number || '';
-                addressContainer.querySelector('.cbm-custom-address-postal-code').value = addressJSON.postal_code || '';
-                addressContainer.querySelector('.cbm-custom-address-country').value = addressJSON.country || '';
+        } else if (actionSelect === 'use_addr_as_gcd_sold_to') {
+            if (params.length < 1) {
+                console.error(`[CBM Builder] Error parsing ${actionSelect}: Expected 1 parameter, got ${params.length}. Raw: ${actionValueRaw}`);
+                return;
+            }
+            const addressType = params[0];
+            // Rebuild UI
+            addActionParametersUI(actionSelect, actionParametersDiv);
+            // Populate
+            const selectEl = actionParametersDiv.querySelector('.cbm-custom-address-select');
+            if (selectEl) selectEl.value = addressType;
 
-                const latInput = addressContainer.querySelector('.cbm-custom-address-lat');
-                const lngInput = addressContainer.querySelector('.cbm-custom-address-lng');
-                if (addressJSON.coordinates && typeof addressJSON.coordinates.lat === 'number' && typeof addressJSON.coordinates.lng === 'number') {
-                    latInput.value = addressJSON.coordinates.lat;
-                    lngInput.value = addressJSON.coordinates.lng;
-                } else {
-                    latInput.value = '';
-                    lngInput.value = '';
+        } else if (actionSelect === 'set_gcd_buyer_contact') {
+            if (params.length < 1) {
+                console.error(`[CBM Builder] Error parsing ${actionSelect}: Expected 1 parameter (JSON string), got ${params.length}. Raw: ${actionValueRaw}`);
+                return;
+            }
+            let jsonString = params[0];
+            const contactData = safeParseJSON(jsonString);
+
+            // Rebuild UI
+            addActionParametersUI(actionSelect, actionParametersDiv);
+
+            // Populate
+            if (contactData) {
+                const emailInput = actionParametersDiv.querySelector('.cbm-action-value-1');
+                const phoneInput = actionParametersDiv.querySelector('.cbm-action-value-2');
+                if (emailInput) emailInput.value = contactData.email || '';
+                if (phoneInput) phoneInput.value = contactData.phone || '';
+            } else {
+                showNotification(`Failed to parse contact JSON for ${actionSelect}. Check console.`, 'danger');
+                console.error(`[CBM Builder] Could not parse Contact JSON from:`, jsonString);
+                // Optionally add raw text area
+                actionParametersDiv.appendChild(createElement('textarea', { style: 'width: 100%; height: 60px; border: 1px solid red;', value: jsonString, title:"Invalid Contact JSON" }));
+            }
+
+        // --- REPLACED BLOCK for ID Numbers ---
+        } else if (actionSelect === 'set_gcd_seller_id_numbers' || actionSelect === 'set_gcd_buyer_id_numbers') {
+            // Prefill UI for multiple ID pairs from a single JSON string parameter
+
+            // 1. Rebuild the basic UI structure (container + Add button) first
+            // This ensures the list container exists before we try to append to it.
+            addActionParametersUI(actionSelect, actionParametersDiv);
+            const listContainer = actionParametersDiv.querySelector('.cbm-id-list-container');
+
+            if (!listContainer) {
+                console.error(`[CBM Builder] ID List Container not found for ${actionSelect} after UI rebuild.`);
+                 showNotification(`UI Error: Could not find list container for ${actionSelect}.`, 'danger');
+                return; // Cannot proceed
+            }
+
+            // 2. Check if we have the expected single parameter from extraction
+            if (params.length !== 1) {
+                console.error(`[CBM Builder] Error parsing ${actionSelect}: Expected 1 JSON string parameter, got ${params.length}. Raw: ${actionValueRaw}`);
+                showNotification(`Error loading parameters for ${actionSelect}. Expected 1 JSON string. Check console.`, 'danger');
+                // Display raw parameter(s) for debugging/correction
+                actionParametersDiv.appendChild(createElement('textarea', { style: 'width: 100%; height: 60px; border: 1px solid red; margin-top: 10px;', value: actionValueRaw, title:"Raw parameter data - Should be a single JSON string like '{\"vat\":\"123\"}'" }));
+                return;
+            }
+
+            // 3. Parse the JSON string parameter
+            const jsonStringParam = params[0]; // The single parameter should be the JSON string
+            const idData = safeParseJSON(jsonStringParam); // Use the robust parser
+
+            if (!idData || typeof idData !== 'object' || Array.isArray(idData)) {
+                console.error(`[CBM Builder] Failed to parse parameter for ${actionSelect} as a valid JSON object. Parameter:`, jsonStringParam);
+                showNotification(`Failed to parse ID data for ${actionSelect}. Check JSON format.`, 'danger');
+                // Display raw parameter for debugging/correction
+                actionParametersDiv.appendChild(createElement('textarea', { style: 'width: 100%; height: 60px; border: 1px solid red; margin-top: 10px;', value: jsonStringParam, title:"Invalid JSON object - Should be like '{\"vat\":\"123\", \"eori\":\"456\"}'" }));
+                return;
+            }
+
+            // 4. Populate the list container with rows based on the parsed data
+            listContainer.innerHTML = ''; // Clear any potential default rows added by addActionParametersUI
+            let count = 0;
+            for (const idType in idData) {
+                if (Object.prototype.hasOwnProperty.call(idData, idType)) {
+                    const idValue = idData[idType];
+                    // Ensure the value is treated as a string for the input field
+                    const valueStr = (typeof idValue === 'string' || typeof idValue === 'number') ? String(idValue) : '';
+
+                    if (valueStr) { // Only add if value is not empty after conversion
+                        // Use the helper function to create and append the row
+                        const newRow = createIdPairRow(idType, valueStr);
+                        listContainer.appendChild(newRow);
+                        count++;
+                    } else {
+                        console.warn(`[CBM Builder] Skipping empty or non-string/number value for ID type '${idType}' in ${actionSelect}. Value:`, idValue);
+                    }
                 }
             }
+            console.log(`[CBM Builder] Populated ${count} ID pairs for ${actionSelect}.`);
+            // If no valid pairs were found in the JSON, the list container will remain empty.
+            // The user can then use the "Add ID" button.
+
+        // --- END REPLACED BLOCK for ID Numbers ---
+
+        } else if (actionSelect === 'add_addon_for_carrier') {
+            if (params.length < 2) {
+                console.error(`[CBM Builder] Error parsing ${actionSelect}: Expected 2 parameters, got ${params.length}. Raw: ${actionValueRaw}`);
+                return;
+            }
+            const param1 = params[0];
+            const param2 = params[1];
+            // Rebuild UI
+            addActionParametersUI(actionSelect, actionParametersDiv);
+            // Populate
+            const input1 = actionParametersDiv.querySelector('.cbm-action-value-1');
+            const input2 = actionParametersDiv.querySelector('.cbm-action-value-2');
+            if (input1) input1.value = param1;
+            if (input2) input2.value = param2;
+
+        } else if (actionSelect === 'set_shipping_method' ||
+                   actionSelect === 'set_gcd_currency' ||
+                   actionSelect === 'set_gcd_incoterms' ||
+                   actionSelect === 'set_gcd_place_of_incoterms' ||
+                   actionSelect === 'add_addon' || // Assuming these take one param
+                   actionSelect === 'remove_addon'
+                  ) {
+            if (params.length < 1) {
+                 // Allow empty param for some actions? For now, log error if expected 1.
+                 if (actionSelect !== 'remove_addon') { // remove_addon might have optional param sometimes? Check API. Assuming required for others.
+                    console.error(`[CBM Builder] Error parsing ${actionSelect}: Expected 1 parameter, got ${params.length}. Raw: ${actionValueRaw}`);
+                     // Rebuild UI anyway so user can enter value
+                     addActionParametersUI(actionSelect, actionParametersDiv);
+                    return;
+                 }
+                 // If it's remove_addon with 0 params, proceed to build UI.
+            }
+             const param1 = params[0] || ''; // Use empty string if param is missing (e.g., remove_addon())
+            // Rebuild UI
+            addActionParametersUI(actionSelect, actionParametersDiv);
+            // Populate
+            const input1 = actionParametersDiv.querySelector('.cbm-action-value-1');
+            if (input1) input1.value = param1;
+
+        } else if (actionSelect === 'add_meta' || actionSelect === 'add_default_meta') {
+            // Handles both regular ('key', 'value') and address ('key', '{address_json}')
+             if (params.length < 1) { // Allow for just a key with empty value? Let's require at least the key.
+                console.error(`[CBM Builder] Error parsing ${actionSelect}: Expected at least 1 parameter (key), got ${params.length}. Raw: ${actionValueRaw}`);
+                addActionParametersUI(actionSelect, actionParametersDiv); // Build UI anyway
+                return;
+            }
+            const firstParam = params[0]; // The 'key'
+            const secondParam = params[1] || ''; // The 'value' or '{address_json}' string, default to empty if missing
+
+            // Determine if secondParam is likely an address JSON
+            let isAddressMode = false;
+            let addressJSON = null;
+            try {
+                // A simple check: does it look like JSON object and contain address_lines?
+                if (secondParam.trim().startsWith('{') && secondParam.includes('address_lines')) {
+                    addressJSON = safeParseJSON(secondParam); // Use robust parser
+                    if (addressJSON && typeof addressJSON === 'object' && !Array.isArray(addressJSON)) {
+                        isAddressMode = true;
+                    } else {
+                         addressJSON = null; // Invalid JSON object, treat as regular string
+                    }
+                }
+            } catch (e) { /* Ignore parsing errors here, treat as regular string */ }
+
+            // Rebuild UI - this sets up the dropdown and initial state (regular or address)
+            addActionParametersUI(actionSelect, actionParametersDiv);
+
+            // Find elements in the rebuilt UI
+            const extraDropdown = actionParametersDiv.querySelector('.cbm-extra-dropdown');
+            const paramContainer = actionParametersDiv.querySelector('.cbm-meta-parameters'); // Container for params/address
+
+            if (!extraDropdown || !paramContainer) {
+                console.error("[CBM Builder] Meta/Default Meta UI elements not found after rebuild.");
+                return;
+            }
+
+            // Set dropdown state and populate fields
+            if (isAddressMode) {
+                extraDropdown.value = 'address';
+                // Trigger the change event handler manually to rebuild the address UI inside paramContainer
+                extraDropdown.dispatchEvent(new Event('change'));
+
+                // Populate the newly created address fields
+                const addressFirstParamInput = paramContainer.querySelector('.cbm-action-value-1');
+                if (addressFirstParamInput) addressFirstParamInput.value = firstParam;
+
+                const addressContainer = paramContainer.querySelector('.cbm-custom-address-parameters');
+                if (addressContainer && addressJSON) {
+                    const trySetAddr = (selector, value) => {
+                        const el = addressContainer.querySelector(selector);
+                        if (el) el.value = value || '';
+                    };
+                    // Populate all address fields... (Same as in set_custom_address block)
+                    trySetAddr('.cbm-custom-address-name', addressJSON.name);
+                    trySetAddr('.cbm-custom-address-lines', Array.isArray(addressJSON.address_lines) ? addressJSON.address_lines.join(', ') : '');
+                    trySetAddr('.cbm-custom-address-apartment-number', addressJSON.apartment_number);
+                    trySetAddr('.cbm-custom-address-attn', addressJSON.attn);
+                    trySetAddr('.cbm-custom-address-care-of', addressJSON.care_of);
+                    trySetAddr('.cbm-custom-address-city', addressJSON.city);
+                    trySetAddr('.cbm-custom-address-region', addressJSON.region);
+                    trySetAddr('.cbm-custom-address-subregion', addressJSON.subregion);
+                    trySetAddr('.cbm-custom-address-street', addressJSON.street);
+                    trySetAddr('.cbm-custom-address-street-number', addressJSON.street_number);
+                    trySetAddr('.cbm-custom-address-door-code', addressJSON.door_code);
+                    trySetAddr('.cbm-custom-address-floor-number', addressJSON.floor_number);
+                    trySetAddr('.cbm-custom-address-postal-code', addressJSON.postal_code);
+                    trySetAddr('.cbm-custom-address-country', addressJSON.country);
+                    const latInput = addressContainer.querySelector('.cbm-custom-address-lat');
+                    const lngInput = addressContainer.querySelector('.cbm-custom-address-lng');
+                    if (addressJSON.coordinates && typeof addressJSON.coordinates.lat === 'number' && typeof addressJSON.coordinates.lng === 'number') {
+                        if (latInput) latInput.value = addressJSON.coordinates.lat;
+                        if (lngInput) lngInput.value = addressJSON.coordinates.lng;
+                    } else {
+                        if (latInput) latInput.value = '';
+                        if (lngInput) lngInput.value = '';
+                    }
+
+                    // Expand address if populated
+                    const toggleBtnAddr = paramContainer.querySelector('.cbm-address-toggle-btn');
+                    if (Object.keys(addressJSON).length > 0 && addressContainer.style.display === 'none' && toggleBtnAddr) {
+                        addressContainer.style.display = 'block';
+                        toggleBtnAddr.textContent = 'Collapse Address Fields';
+                    }
+                }
+
+            } else {
+                // Regular mode (second param was not valid address JSON or missing)
+                extraDropdown.value = 'regular';
+                // UI is already in regular mode by default from addActionParametersUI
+                const regParamInput1 = paramContainer.querySelector('.cbm-action-value-1');
+                const regParamInput2 = paramContainer.querySelector('.cbm-action-value-2');
+                if (regParamInput1) regParamInput1.value = firstParam;
+                if (regParamInput2) regParamInput2.value = secondParam; // Populate the second field with the non-JSON string or empty string
+            }
 
         } else {
-            // Regular mode: two parameters
-            const regParamInput1 = createElement('input', {
-                type: 'text',
-                className: 'cbm-action-value-1',
-                placeholder: 'Enter field name',
-                value: firstParam
-            });
-            const regParamInput2 = createElement('input', {
-                type: 'text',
-                className: 'cbm-action-value-2',
-                placeholder: 'Enter field value',
-                value: secondParam.replace(/^['"]|['"]$/g, '')
-            });
-            paramContainer.appendChild(regParamInput1);
-            paramContainer.appendChild(regParamInput2);
-        }
-
-        // On dropdown change, switch UI dynamically
-        extraDropdown.addEventListener('change', (e) => {
-            const selection = e.target.value;
-            paramContainer.innerHTML = '';
-            if (selection === 'regular') {
-                // Go back to two parameters
-                const regParamInput1 = createElement('input', {
-                    type: 'text',
-                    className: 'cbm-action-value-1',
-                    placeholder: 'Enter field name'
-                });
-                const regParamInput2 = createElement('input', {
-                    type: 'text',
-                    className: 'cbm-action-value-2',
-                    placeholder: 'Enter field value'
-                });
-                paramContainer.appendChild(regParamInput1);
-                paramContainer.appendChild(regParamInput2);
-            } else {
-                // Address mode
-                const addressFirstParam = createElement('input', {
-                    type: 'text',
-                    className: 'cbm-action-value-1',
-                    placeholder: 'Enter first parameter'
-                });
-                paramContainer.appendChild(addressFirstParam);
-                addCustomAddressParameters(paramContainer, false);
+            // Fallback for any other action - assume single parameter if params exist
+            console.warn(`[CBM Builder] Using default parameter handling for action: ${actionSelect}`);
+            addActionParametersUI(actionSelect, actionParametersDiv); // Rebuild basic UI if needed
+            if (params.length > 0) {
+                const paramInput = actionParametersDiv.querySelector('.cbm-action-value-1');
+                if (paramInput) {
+                    // Join params back together if multiple were unexpectedly parsed for a single-param action
+                    paramInput.value = params.join(', ');
+                } else {
+                    // If no input field, maybe display raw params?
+                    actionParametersDiv.appendChild(createElement('p', { style:'color: grey; font-style: italic;'}, `Params: ${params.join(', ')}`));
+                }
             }
-        });
-
-    } else {
-        // Default handling for actions with a single parameter or no parameters
-        actionParametersDiv.innerHTML = '';
-        const paramStr = params.join(', ').replace(/^['"]|['"]$/g, '').trim();
-        if (paramStr) {
-            const paramInput = createElement('input', {
-                type: 'text',
-                className: 'cbm-action-value-1',
-                value: paramStr
-            });
-            actionParametersDiv.appendChild(paramInput);
         }
     }
-}
+
 
     /* ------------------- Initialization and other functions ------------------- */
 
@@ -2319,160 +2316,45 @@ if (!method || !name) {
         };
 
 function buildActionExpression(actionField, actionSelect) {
-    // This function constructs the action expression string based on the UI inputs and action type
+        // This function constructs the action expression string based on the UI inputs and action type
 
-    if (actionSelect === 'set_custom_address' ||
-        actionSelect === 'set_gcd_seller_address' ||
-        actionSelect === 'set_gcd_sold_to') {
+        // Helper to safely quote strings for the expression parameter list (use for simple string params)
+        const quote = (str) => `'${(str || '').replace(/'/g, "\\'")}'`; // Basic single quote escaping
 
-        let paramSelect = '';
-        const paramSelectEl = actionField.querySelector('.cbm-custom-address-select');
-        if (paramSelectEl) {
-            paramSelect = paramSelectEl.value;
-        }
-
-        const nameInput = actionField.querySelector('.cbm-custom-address-name')?.value.trim() || '';
-        const addressLinesInput = actionField.querySelector('.cbm-custom-address-lines')?.value.trim() || '';
-        const apartmentNumber = actionField.querySelector('.cbm-custom-address-apartment-number')?.value.trim() || '';
-        const attn = actionField.querySelector('.cbm-custom-address-attn')?.value.trim() || '';
-        const careOf = actionField.querySelector('.cbm-custom-address-care-of')?.value.trim() || '';
-        const cityInput = actionField.querySelector('.cbm-custom-address-city')?.value.trim() || '';
-        const region = actionField.querySelector('.cbm-custom-address-region')?.value.trim() || '';
-        const subregion = actionField.querySelector('.cbm-custom-address-subregion')?.value.trim() || '';
-        const street = actionField.querySelector('.cbm-custom-address-street')?.value.trim() || '';
-        const streetNumber = actionField.querySelector('.cbm-custom-address-street-number')?.value.trim() || '';
-        const doorCode = actionField.querySelector('.cbm-custom-address-door-code')?.value.trim() || '';
-        const floorNumber = actionField.querySelector('.cbm-custom-address-floor-number')?.value.trim() || '';
-        const postalCode = actionField.querySelector('.cbm-custom-address-postal-code')?.value.trim() || '';
-        const countryInput = actionField.querySelector('.cbm-custom-address-country')?.value.trim() || '';
-
-        const latVal = actionField.querySelector('.cbm-custom-address-lat')?.value.trim();
-        const lngVal = actionField.querySelector('.cbm-custom-address-lng')?.value.trim();
-        const lat = latVal !== '' ? parseFloat(latVal) : NaN;
-        const lng = lngVal !== '' ? parseFloat(lngVal) : NaN;
-
-        const addressObj = {};
-        if (nameInput) addressObj.name = nameInput;
-        if (addressLinesInput) {
-            addressObj.address_lines = addressLinesInput.split(',').map(line => line.trim()).filter(line => line !== '');
-        }
-        if (apartmentNumber) addressObj.apartment_number = apartmentNumber;
-        if (attn) addressObj.attn = attn;
-        if (careOf) addressObj.care_of = careOf;
-        if (cityInput) addressObj.city = cityInput;
-        if (region) addressObj.region = region;
-        if (subregion) addressObj.subregion = subregion;
-        if (street) addressObj.street = street;
-        if (streetNumber) addressObj.street_number = streetNumber;
-        if (doorCode) addressObj.door_code = doorCode;
-        if (floorNumber) addressObj.floor_number = floorNumber;
-        if (postalCode) addressObj.postal_code = postalCode;
-        if (countryInput) addressObj.country = countryInput;
-        if (!isNaN(lat) && !isNaN(lng)) {
-            addressObj.coordinates = { lat, lng };
-        }
-
-        const addressJSON = JSON.stringify(addressObj).replace(/"/g, '\\"');
-
-        if (actionSelect === 'set_custom_address') {
-            return `${actionSelect}('${paramSelect}', "${addressJSON}")`;
-        } else {
-            return `${actionSelect}("${addressJSON}")`;
-        }
-
-    } else if (actionSelect === 'set_custom_address_company_name') {
-        const paramSelect = actionField.querySelector('.cbm-custom-address-select').value;
-        const companyNameInput = actionField.querySelector('.cbm-action-value-2').value.trim();
-        return `${actionSelect}('${paramSelect}', '${companyNameInput}')`;
-
-    } else if (actionSelect === 'remove_location_ref' ||
-               actionSelect === 'use_gcd_unit_alternative_value' ||
-               actionSelect === 'use_line_items_currency_as_gcd_currency' ||
-               actionSelect === 'use_customer_info_as_gcd_buyer_contact') {
-        return `${actionSelect}()`;
-
-    } else if (actionSelect === 'use_addr_as_gcd_sold_to') {
-        const paramSelect = actionField.querySelector('.cbm-custom-address-select').value;
-        return `${actionSelect}('${paramSelect}')`;
-
-    } else if (actionSelect === 'set_gcd_buyer_contact') {
-        const inputs = actionField.querySelectorAll('.cbm-action-parameters input');
-        const email = inputs[0].value.trim();
-        const phone = inputs[1].value.trim();
-        const contactData = {};
-        if (email) contactData.email = email;
-        if (phone) contactData.phone = phone;
-        const contactJSON = JSON.stringify(contactData).replace(/"/g, '\\"');
-        return `${actionSelect}("${contactJSON}")`;
-
-    } else if (actionSelect === 'set_gcd_seller_id_numbers') {
-        const vat = actionField.querySelector('.cbm-action-value-1').value.trim();
-        const eori = actionField.querySelector('.cbm-action-value-2').value.trim();
-        const idData = {};
-        if (vat) idData.vat = vat;
-        if (eori) idData.eori = eori;
-        const idJSON = JSON.stringify(idData).replace(/"/g, '\\"');
-        return `${actionSelect}("${idJSON}")`;
-
-    } else if (actionSelect === 'set_gcd_buyer_id_numbers') {
-        const typeDropdown = actionField.querySelector('.cbm-buyer-id-type');
-        const fieldsContainer = actionField.querySelector('.cbm-buyer-id-fields');
-        if (typeDropdown.value === 'VAT+EORI') {
-            const vat = fieldsContainer.querySelector('.cbm-action-value-1').value.trim();
-            const eori = fieldsContainer.querySelector('.cbm-action-value-2').value.trim();
-            const idData = {};
-            if (vat) idData.vat = vat;
-            if (eori) idData.eori = eori;
-            const idJSON = JSON.stringify(idData).replace(/"/g, '\\"');
-            return `${actionSelect}("${idJSON}")`;
-        } else if (typeDropdown.value === 'EIN') {
-            const ein = fieldsContainer.querySelector('.cbm-action-value-1').value.trim();
-            const idData = { ein };
-            const idJSON = JSON.stringify(idData).replace(/"/g, '\\"');
-            return `${actionSelect}("${idJSON}")`;
-        } else {
-            return null; // No selection made
-        }
-
-    } else if (actionSelect === 'add_meta' || actionSelect === 'add_default_meta') {
-        // Check the dropdown value
-        const extraDropdown = actionField.querySelector('.cbm-extra-dropdown');
-        const selection = extraDropdown ? extraDropdown.value : 'regular';
-        if (selection === 'regular') {
-            const fieldName = actionField.querySelector('.cbm-action-value-1')?.value.trim() || '';
-            const fieldValue = actionField.querySelector('.cbm-action-value-2')?.value.trim() || '';
-            return `${actionSelect}('${fieldName}', '${fieldValue}')`;
-        } else if (selection === 'address') {
-            // Address mode for add_meta/add_default_meta
-            const addressFirstParam = actionField.querySelector('.cbm-action-value-1')?.value.trim() || '';
-
-            const addressContainer = actionField.querySelector('.cbm-meta-parameters .cbm-custom-address-parameters');
+        // Helper to build address JSON string, returns null if no fields filled
+        // (Ensure addCustomAddressParameters and this helper are defined correctly elsewhere)
+        const buildAddressJSON = (addressContainer) => {
             if (!addressContainer) return null;
 
-            const nameInput = addressContainer.querySelector('.cbm-custom-address-name')?.value.trim() || '';
-            const addressLinesInput = addressContainer.querySelector('.cbm-custom-address-lines')?.value.trim() || '';
-            const apartmentNumber = addressContainer.querySelector('.cbm-custom-address-apartment-number')?.value.trim() || '';
-            const attn = addressContainer.querySelector('.cbm-custom-address-attn')?.value.trim() || '';
-            const careOf = addressContainer.querySelector('.cbm-custom-address-care-of')?.value.trim() || '';
-            const cityInput = addressContainer.querySelector('.cbm-custom-address-city')?.value.trim() || '';
-            const region = addressContainer.querySelector('.cbm-custom-address-region')?.value.trim() || '';
-            const subregion = addressContainer.querySelector('.cbm-custom-address-subregion')?.value.trim() || '';
-            const street = addressContainer.querySelector('.cbm-custom-address-street')?.value.trim() || '';
-            const streetNumber = addressContainer.querySelector('.cbm-custom-address-street-number')?.value.trim() || '';
-            const doorCode = addressContainer.querySelector('.cbm-custom-address-door-code')?.value.trim() || '';
-            const floorNumber = addressContainer.querySelector('.cbm-custom-address-floor-number')?.value.trim() || '';
-            const postalCode = addressContainer.querySelector('.cbm-custom-address-postal-code')?.value.trim() || '';
-            const countryInput = addressContainer.querySelector('.cbm-custom-address-country')?.value.trim() || '';
-
-            const latVal = addressContainer.querySelector('.cbm-custom-address-lat')?.value.trim();
-            const lngVal = addressContainer.querySelector('.cbm-custom-address-lng')?.value.trim();
-            const lat = latVal !== '' ? parseFloat(latVal) : NaN;
-            const lng = lngVal !== '' ? parseFloat(lngVal) : NaN;
+            const getValue = (selector) => addressContainer.querySelector(selector)?.value.trim() || '';
+            const getFloat = (selector) => {
+                const val = addressContainer.querySelector(selector)?.value.trim();
+                // Only parse if not empty, return NaN otherwise
+                return val !== '' ? parseFloat(val) : NaN;
+            };
 
             const addressObj = {};
+            const nameInput = getValue('.cbm-custom-address-name');
+            const addressLinesInput = getValue('.cbm-custom-address-lines');
+            const apartmentNumber = getValue('.cbm-custom-address-apartment-number');
+            const attn = getValue('.cbm-custom-address-attn');
+            const careOf = getValue('.cbm-custom-address-care-of');
+            const cityInput = getValue('.cbm-custom-address-city');
+            const region = getValue('.cbm-custom-address-region');
+            const subregion = getValue('.cbm-custom-address-subregion');
+            const street = getValue('.cbm-custom-address-street');
+            const streetNumber = getValue('.cbm-custom-address-street-number');
+            const doorCode = getValue('.cbm-custom-address-door-code');
+            const floorNumber = getValue('.cbm-custom-address-floor-number');
+            const postalCode = getValue('.cbm-custom-address-postal-code');
+            const countryInput = getValue('.cbm-custom-address-country');
+            const lat = getFloat('.cbm-custom-address-lat');
+            const lng = getFloat('.cbm-custom-address-lng');
+
             if (nameInput) addressObj.name = nameInput;
             if (addressLinesInput) {
-                addressObj.address_lines = addressLinesInput.split(',').map(line => line.trim()).filter(line => line !== '');
+                const lines = addressLinesInput.split(',').map(line => line.trim()).filter(line => line !== '');
+                if (lines.length > 0) addressObj.address_lines = lines;
             }
             if (apartmentNumber) addressObj.apartment_number = apartmentNumber;
             if (attn) addressObj.attn = attn;
@@ -2486,32 +2368,281 @@ function buildActionExpression(actionField, actionSelect) {
             if (floorNumber) addressObj.floor_number = floorNumber;
             if (postalCode) addressObj.postal_code = postalCode;
             if (countryInput) addressObj.country = countryInput;
+            // Check BOTH lat and lng are valid numbers before adding coordinates
             if (!isNaN(lat) && !isNaN(lng)) {
                 addressObj.coordinates = { lat, lng };
             }
 
-            const addressJSON = JSON.stringify(addressObj).replace(/"/g, '\\"');
-            return `${actionSelect}('${addressFirstParam}', "${addressJSON}")`;
-        }
+            // Only return JSON if at least one property was added
+            if (Object.keys(addressObj).length > 0) {
+                // Stringify and escape double quotes for embedding in the action string
+                return JSON.stringify(addressObj).replace(/"/g, '\\"');
+            }
+            return null; // Return null if address is empty
+        };
 
-} else {
-    // For other actions that accept simple parameters
-    const inputs = actionField.querySelectorAll('.cbm-action-parameters input');
-    if (inputs.length > 0) {
-        const params = Array.from(inputs)
-            .map(i => i.value.trim())
-            .filter(p => p !== '');
-        if (params.length === 1) {
-            return `${actionSelect}('${params[0]}')`;
+
+        if (actionSelect === 'set_custom_address') {
+            const paramSelectEl = actionField.querySelector('.cbm-custom-address-select');
+            const addressContainer = actionField.querySelector('.cbm-custom-address-wrapper .cbm-custom-address-parameters'); // Target nested container
+            const addressType = paramSelectEl ? paramSelectEl.value : '';
+            const addressJSON = buildAddressJSON(addressContainer);
+
+            if (addressType && addressJSON) {
+                // Use double quotes for the JSON part as it contains escaped double quotes itself
+                return `${actionSelect}(${quote(addressType)}, "${addressJSON}")`;
+            } else {
+                console.warn(`[CBM Builder] Incomplete data for ${actionSelect}. Type: ${addressType}, Address JSON: ${addressJSON}`);
+                showNotification(`Address type and some address details required for ${actionSelect}.`, 'danger');
+                // Highlight missing parts?
+                if (!addressType && paramSelectEl) paramSelectEl.classList.add('error'); else if(paramSelectEl) paramSelectEl.classList.remove('error');
+                // Maybe add error class to address wrapper if addressJSON is null?
+                 const wrapper = actionField.querySelector('.cbm-custom-address-wrapper');
+                 if (!addressJSON && wrapper) wrapper.style.border = '1px solid red'; else if (wrapper) wrapper.style.border = 'none';
+                return null;
+            }
+
+        } else if (actionSelect === 'set_gcd_seller_address' || actionSelect === 'set_gcd_sold_to') {
+            const addressContainer = actionField.querySelector('.cbm-custom-address-wrapper .cbm-custom-address-parameters'); // Target nested container
+            const addressJSON = buildAddressJSON(addressContainer);
+            if (addressJSON) {
+                // Use double quotes for the JSON part
+                return `${actionSelect}("${addressJSON}")`;
+            } else {
+                console.warn(`[CBM Builder] Incomplete address data for ${actionSelect}.`);
+                showNotification(`Some address details required for ${actionSelect}.`, 'danger');
+                 const wrapper = actionField.querySelector('.cbm-custom-address-wrapper');
+                 if (wrapper) wrapper.style.border = '1px solid red';
+                return null;
+            }
+
+        } else if (actionSelect === 'set_custom_address_company_name') {
+            const paramSelectEl = actionField.querySelector('.cbm-custom-address-select');
+            const companyNameInputEl = actionField.querySelector('.cbm-action-value-2');
+            const addressType = paramSelectEl ? paramSelectEl.value : '';
+            const companyName = companyNameInputEl ? companyNameInputEl.value.trim() : '';
+
+            if (addressType && companyName) {
+                return `${actionSelect}(${quote(addressType)}, ${quote(companyName)})`;
+            } else {
+                console.warn(`[CBM Builder] Incomplete data for ${actionSelect}. Type: ${addressType}, Name: ${companyName}`);
+                showNotification(`Address type and Company Name required for ${actionSelect}.`, 'danger');
+                 if (!addressType && paramSelectEl) paramSelectEl.classList.add('error'); else if (paramSelectEl) paramSelectEl.classList.remove('error');
+                 if (!companyName && companyNameInputEl) companyNameInputEl.classList.add('error'); else if (companyNameInputEl) companyNameInputEl.classList.remove('error');
+                return null;
+            }
+
+        } else if (actionSelect === 'remove_location_ref' ||
+                   actionSelect === 'use_gcd_unit_alternative_value' ||
+                   actionSelect === 'use_line_items_currency_as_gcd_currency' ||
+                   actionSelect === 'use_customer_info_as_gcd_buyer_contact') {
+            // Actions with no parameters
+            return `${actionSelect}()`;
+
+        } else if (actionSelect === 'use_addr_as_gcd_sold_to') {
+            const paramSelectEl = actionField.querySelector('.cbm-custom-address-select');
+            const addressType = paramSelectEl ? paramSelectEl.value : '';
+            if (addressType) {
+                return `${actionSelect}(${quote(addressType)})`;
+            } else {
+                console.warn(`[CBM Builder] Address type not selected for ${actionSelect}.`);
+                showNotification(`Address type required for ${actionSelect}.`, 'danger');
+                 if (paramSelectEl) paramSelectEl.classList.add('error');
+                return null;
+            }
+
+        } else if (actionSelect === 'set_gcd_buyer_contact') {
+            const emailInput = actionField.querySelector('.cbm-action-value-1');
+            const phoneInput = actionField.querySelector('.cbm-action-value-2');
+            const email = emailInput ? emailInput.value.trim() : '';
+            const phone = phoneInput ? phoneInput.value.trim() : '';
+
+            const contactData = {};
+            if (email) contactData.email = email;
+            if (phone) contactData.phone = phone;
+
+            // Only proceed if at least one field is filled
+            if (Object.keys(contactData).length > 0) {
+                const contactJSON = JSON.stringify(contactData).replace(/"/g, '\\"');
+                return `${actionSelect}("${contactJSON}")`;
+            } else {
+                console.warn(`[CBM Builder] No contact info entered for ${actionSelect}.`);
+                showNotification(`Email or Phone required for ${actionSelect}.`, 'danger');
+                 if (emailInput) emailInput.classList.add('error');
+                 if (phoneInput) phoneInput.classList.add('error');
+                return null;
+            }
+
+        // --- REPLACED BLOCK for ID Numbers ---
+        } else if (actionSelect === 'set_gcd_seller_id_numbers' || actionSelect === 'set_gcd_buyer_id_numbers') {
+            // Build the single JSON string parameter from multiple UI rows
+
+            const listContainer = actionField.querySelector('.cbm-id-list-container');
+            if (!listContainer) {
+                console.error(`[CBM Builder] ID List Container not found when building expression for ${actionSelect}`);
+                return null; // Cannot build expression
+            }
+
+            const idRows = listContainer.querySelectorAll('.cbm-id-pair-row');
+            const idObject = {};
+            let isOverallValid = true;
+            let hasDuplicateTypes = false;
+            const typeCounts = {}; // To track duplicates
+
+            idRows.forEach(row => {
+                const typeSelect = row.querySelector('.cbm-id-type-select');
+                const valueInput = row.querySelector('.cbm-id-value-input');
+
+                const idType = typeSelect ? typeSelect.value : '';
+                const idValue = valueInput ? valueInput.value.trim() : '';
+
+                let rowIsValid = true;
+                // Validate: Both type and value are required for a row to be included
+                if (!idType) {
+                    if (typeSelect) typeSelect.classList.add('error');
+                    rowIsValid = false;
+                    isOverallValid = false;
+                } else {
+                    if (typeSelect) typeSelect.classList.remove('error'); // Clear previous error
+                }
+                if (!idValue) {
+                    if (valueInput) valueInput.classList.add('error');
+                    rowIsValid = false;
+                    isOverallValid = false;
+                } else {
+                    if (valueInput) valueInput.classList.remove('error'); // Clear previous error
+                }
+
+                if (rowIsValid) {
+                    // Check for duplicate types
+                    if (idObject.hasOwnProperty(idType)) {
+                        console.warn(`[CBM Builder] Duplicate ID Type '${idType}' detected for ${actionSelect}. The last value will be used.`);
+                        hasDuplicateTypes = true;
+                        // Optionally highlight the duplicate row's type selector
+                         if (typeSelect) {
+                             typeSelect.style.border = '1px solid orange'; // Highlight duplicate type
+                             typeSelect.title = 'Duplicate type - last value wins';
+                         }
+
+                    } else {
+                        // Clear previous duplicate warning style if any
+                         if (typeSelect) {
+                            typeSelect.style.border = ''; // Reset border
+                            typeSelect.title = ''; // Clear title
+                         }
+                    }
+                    idObject[idType] = idValue; // Add or overwrite the value
+                }
+            });
+
+            if (!isOverallValid) {
+                showNotification(`Incomplete ID information for ${actionSelect}. Please complete or remove invalid rows.`, 'danger');
+                return null; // Don't save if any row is invalid
+            }
+
+            if (hasDuplicateTypes) {
+                showNotification(`Duplicate ID types found for ${actionSelect}. The last value for each type was used.`, 'warning');
+            }
+
+            // Proceed only if we have at least one valid ID pair
+            if (Object.keys(idObject).length === 0) {
+                console.warn(`[CBM Builder] No valid ID pairs entered for ${actionSelect}. Action will not be saved.`);
+                showNotification(`No valid ID numbers entered for ${actionSelect}. Add at least one.`, 'danger');
+                return null; // Don't save an empty object action
+            }
+
+            // Stringify the object and escape it for the action parameter
+            const jsonString = JSON.stringify(idObject);
+            // Escape necessary characters to embed the JSON string within the action string parameter
+            // Primarily need to escape double quotes and backslashes
+            const escapedJsonString = jsonString.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+
+            // Format the final expression: actionSelect("escaped JSON string")
+            return `${actionSelect}("${escapedJsonString}")`; // Use double quotes around the JSON string parameter
+
+        // --- END REPLACED BLOCK for ID Numbers ---
+
+        } else if (actionSelect === 'add_meta' || actionSelect === 'add_default_meta') {
+            const extraDropdown = actionField.querySelector('.cbm-extra-dropdown');
+            const selection = extraDropdown ? extraDropdown.value : 'regular'; // Default to regular if dropdown not found
+
+            if (selection === 'regular') {
+                const fieldNameInput = actionField.querySelector('.cbm-meta-parameters .cbm-action-value-1');
+                const fieldValueInput = actionField.querySelector('.cbm-meta-parameters .cbm-action-value-2');
+                const fieldName = fieldNameInput ? fieldNameInput.value.trim() : '';
+                const fieldValue = fieldValueInput ? fieldValueInput.value.trim() : '';
+
+                if (fieldName) { // Require at least a field name
+                    return `${actionSelect}(${quote(fieldName)}, ${quote(fieldValue)})`;
+                } else {
+                    console.warn(`[CBM Builder] Field name missing for ${actionSelect} in regular mode.`);
+                    showNotification(`Field name required for ${actionSelect}.`, 'danger');
+                    if (fieldNameInput) fieldNameInput.classList.add('error'); else if (fieldNameInput) fieldNameInput.classList.remove('error');
+                    return null;
+                }
+            } else if (selection === 'address') {
+                const addressFirstParamInput = actionField.querySelector('.cbm-meta-parameters .cbm-action-value-1');
+                const addressContainer = actionField.querySelector('.cbm-meta-parameters .cbm-custom-address-wrapper .cbm-custom-address-parameters'); // Nested container
+                const addressFirstParam = addressFirstParamInput ? addressFirstParamInput.value.trim() : '';
+                const addressJSON = buildAddressJSON(addressContainer);
+
+                if (addressFirstParam && addressJSON) {
+                    return `${actionSelect}(${quote(addressFirstParam)}, "${addressJSON}")`;
+                } else {
+                    console.warn(`[CBM Builder] Incomplete data for ${actionSelect} in address mode. Param1: ${addressFirstParam}, Address JSON: ${addressJSON}`);
+                    showNotification(`First parameter and some address data required for ${actionSelect} in address mode.`, 'danger');
+                     if (!addressFirstParam && addressFirstParamInput) addressFirstParamInput.classList.add('error'); else if (addressFirstParamInput) addressFirstParamInput.classList.remove('error');
+                     const wrapper = actionField.querySelector('.cbm-meta-parameters .cbm-custom-address-wrapper');
+                     if (!addressJSON && wrapper) wrapper.style.border = '1px solid red'; else if (wrapper) wrapper.style.border = 'none';
+                    return null;
+                }
+            } else {
+                console.error(`[CBM Builder] Unknown selection type '${selection}' for ${actionSelect}.`);
+                return null; // Should not happen
+            }
+
         } else {
-            return `${actionSelect}(${params.map(p => `'${p}'`).join(', ')})`;
-        }
-    } else {
-        return `${actionSelect}()`;
-    }
-}
-}
+            // Fallback for other actions, typically expecting one parameter or specific handling already done.
+            // Attempt to find a single input parameter
+            const paramInput = actionField.querySelector('.cbm-action-parameters .cbm-action-value-1');
+            const paramValue = paramInput ? paramInput.value.trim() : null;
 
+            if (paramValue !== null) { // If an input exists and has a value (or is empty string)
+                // Check if action is known to take zero params (already handled above, but as a safeguard)
+                const zeroParamActions = ['remove_location_ref', 'use_gcd_unit_alternative_value', 'use_line_items_currency_as_gcd_currency', 'use_customer_info_as_gcd_buyer_contact'];
+                if (zeroParamActions.includes(actionSelect)) {
+                     // If a value was entered for a zero-param action, maybe warn?
+                     if(paramValue !== '') console.warn(`[CBM Builder] Parameter value found for zero-parameter action ${actionSelect}. Value will be ignored.`);
+                    return `${actionSelect}()`;
+                } else {
+                    // Assume single parameter needed
+                    return `${actionSelect}(${quote(paramValue)})`;
+                }
+            } else {
+                // No input found or value is null
+                 // Check if it's known zero param action without an input field anyway
+                const zeroParamActions = ['remove_location_ref', 'use_gcd_unit_alternative_value', 'use_line_items_currency_as_gcd_currency', 'use_customer_info_as_gcd_buyer_contact'];
+                if (zeroParamActions.includes(actionSelect)) {
+                    return `${actionSelect}()`;
+                } else {
+                     // Action might require parameters but UI is missing or complex (e.g., multiple inputs not handled here)
+                     // Check if it's an action we know requires a parameter that wasn't found
+                     const knownSingleParamActions = ['set_shipping_method', 'set_gcd_currency', 'set_gcd_incoterms', 'set_gcd_place_of_incoterms', 'add_addon', 'remove_addon']; // Example list
+                     if(knownSingleParamActions.includes(actionSelect)){
+                        console.error(`[CBM Builder] Parameter input missing or empty for required parameter action ${actionSelect}.`);
+                        showNotification(`Parameter required for ${actionSelect}.`, 'danger');
+                         // If paramInput exists but is empty, add error class
+                         if(paramInput) paramInput.classList.add('error');
+                         return null; // Prevent saving invalid action
+                     } else {
+                         // If it's an unknown action or one genuinely taking zero params not listed above
+                         console.warn(`[CBM Builder] Could not determine parameters for action ${actionSelect} using default logic. Assuming no parameters.`);
+                         return `${actionSelect}()`;
+                     }
+                }
+            }
+        }
+    }
 const openEditMethodModal = (tr, method) => {
     const methodData = window.cbmConfig.custom_booking_methods.find(m => m.method === method);
     if (!methodData) {
