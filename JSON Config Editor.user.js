@@ -1150,55 +1150,84 @@ function fetchSiteConfig(callback) {
 
     const endpoint = getApiEndpoint(`https://api-stage.ingrid.com/v1/config/site.get?site_id=${siteId}`);
 
-    GM_xmlhttpRequest({
-        method: "GET",
-        url: endpoint,
-        headers: {
-            "Authorization": `Bearer ${authToken}`,
-            "Content-Type": "application/json"
-        },
-        onload: function(response) {
-            if (response.status === 200) {
+function fetchSiteConfig(callback) {
+    const siteId = unsafeWindow.siteId;
+    const authToken = unsafeWindow.authToken;
+
+    if (!siteId || !authToken) {
+        callback('Missing siteId or authToken.', null, null);
+        return;
+    }
+
+    const endpoint = getApiEndpoint(`https://api-stage.ingrid.com/v1/config/site.get?site_id=${siteId}`);
+
+fetch(endpoint, {
+            method: "GET",
+            headers: {
+                "Authorization": `Bearer ${authToken}`,
+                "Content-Type": "application/json" // Content-Type isn't strictly needed for GET, but good practice
+            }
+        })
+        .then(response => {
+            const status = response.status;
+            // Try to get trace ID from headers (adjust header name if different)
+            const traceIdHeader = response.headers.get('trace-id') || response.headers.get('x-trace-id');
+
+            if (response.ok) { // response.ok is true for status 200-299
+                return response.json().then(data => ({ data, status, traceId: traceIdHeader, ok: true }));
+            } else {
+                // If not ok, get the response text to parse for error details
+                return response.text().then(text => ({ errorText: text, status, traceId: traceIdHeader, ok: false }));
+            }
+        })
+        .then(({ data, errorText, status, traceId, ok }) => {
+            if (ok) {
+                 // --- This is the logic from your original 'onload' on success ---
                 try {
-                    const data = JSON.parse(response.responseText);
+                    // This check might be redundant if response.json() already succeeded
+                    // const data = JSON.parse(response.responseText); // Already parsed as 'data'
 
                     if (data && data.site && data.site.name) {
                         displayMerchantName(data.site.name);
                         // Adjust the modal overlay so it doesn't get shoved behind the banner
                         const modalOverlay = document.getElementById('ingrid-json-editor-modal-overlay');
                         if (modalOverlay) {
-                            // Using setProperty to force the style with !important
                             modalOverlay.style.setProperty('top', '50px', 'important');
                             modalOverlay.style.setProperty('height', 'calc(100vh - 50px)', 'important');
                         }
                     }
-
-                    callback(null, data, null);
+                    // Use traceId from header if available
+                    callback(null, data, traceId);
                 } catch (e) {
-                    callback('Invalid JSON response from site config.', null, null);
+                    callback('Invalid JSON response from site config.', null, traceId); // Pass traceId if available
                 }
+                 // --- End original 'onload' success logic ---
             } else {
-                let errorMessage = `Failed to fetch site config: ${response.status}`;
-                let traceId = null;
+                 // --- This is the logic from your original 'onload' on error ---
+                let errorMessage = `Failed to fetch site config: ${status}`;
+                let actualTraceId = traceId; // Use header traceId as default
                 try {
-                    const errorData = JSON.parse(response.responseText);
+                    const errorData = JSON.parse(errorText);
                     if (errorData.trace_id) {
-                        traceId = errorData.trace_id;
-                        errorMessage += `\nTrace ID: ${traceId}`;
+                        actualTraceId = errorData.trace_id; // Prefer body traceId
+                        errorMessage += `\nTrace ID: ${actualTraceId}`;
                     }
                     if (errorData.message) {
                         errorMessage += `\nMessage: ${errorData.message}`;
                     }
                 } catch (e) {
-                    errorMessage += `\nResponse: ${response.responseText}`;
+                    // If parsing fails, use the raw text
+                    errorMessage += `\nResponse: ${errorText}`;
                 }
-                callback(errorMessage, null, traceId);
+                callback(errorMessage, null, actualTraceId); // Pass determined traceId
+                 // --- End original 'onload' error logic ---
             }
-        },
-        onerror: function() {
-            callback('Network error while fetching site config.', null, null);
-        }
-    });
+        })
+        .catch(error => {
+            // This corresponds to the original 'onerror' (network-level failure)
+            console.error("Fetch network error:", error);
+            callback(`Network error while fetching site config: ${error.message}`, null, null);
+        });
 }
 
 
