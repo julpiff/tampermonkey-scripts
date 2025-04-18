@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         JSON Config Editor
 // @namespace    http://tampermonkey.net/
-// @version      2.1
+// @version      2.2
 // @description  Enhanced JSON configuration editor
 // @author       julpif
 // @match        https://mad.ingrid.com/*
