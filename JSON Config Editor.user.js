@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         JSON Config Editor
 // @namespace    http://tampermonkey.net/
-// @version      2.2
+// @version      2.3
 // @description  Enhanced JSON configuration editor
 // @author       julpif
 // @match        https://mad.ingrid.com/*
@@ -1138,17 +1138,6 @@ function displayMerchantName(name) {
     }
     $banner.text("Merchant: " + name + envLabel);
 }
-
-function fetchSiteConfig(callback) {
-    const siteId = unsafeWindow.siteId;
-    const authToken = unsafeWindow.authToken;
-
-    if (!siteId || !authToken) {
-        callback('Missing siteId or authToken.', null, null);
-        return;
-    }
-
-    const endpoint = getApiEndpoint(`https://api-stage.ingrid.com/v1/config/site.get?site_id=${siteId}`);
 
 function fetchSiteConfig(callback) {
     const siteId = unsafeWindow.siteId;
